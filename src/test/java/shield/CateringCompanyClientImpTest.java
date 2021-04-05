@@ -57,4 +57,18 @@ public class CateringCompanyClientImpTest {
     assertTrue(client.isRegistered());
     assertEquals(client.getName(), name);
   }
+
+  @Test
+  public void testUpdateOrderStatus() {
+    int[] orderNumbers = {12345,23456,34567,45678,56789};
+    String[] statuses = {"packed", "dispatched", "delivered"};
+    int selectedOrderIndex = new Random().nextInt(orderNumbers.length);
+    int selectedOrder = orderNumbers[selectedOrderIndex];
+    int selectedStatusIndex = new Random().nextInt(statuses.length);
+    String selectedStatus = statuses[selectedStatusIndex];
+
+    System.out.println(selectedOrder);
+    System.out.println(selectedStatus);
+    assertTrue(client.updateOrderStatus(selectedOrder, selectedStatus));
+  }
 }

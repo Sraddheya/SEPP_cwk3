@@ -56,4 +56,9 @@ public class ShieldingIndividualClientImpTest {
     assertTrue(client.isRegistered());
     assertEquals(client.getCHI(), chi);
   }
+
+  @Test
+  public void testShowFoodBoxes() {
+    assertEquals(client.showFoodBoxes("none").size(), 3);
+  }
 }
