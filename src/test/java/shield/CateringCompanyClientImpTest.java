@@ -56,6 +56,7 @@ public class CateringCompanyClientImpTest {
     assertTrue(client.registerCateringCompany(name, postCode));
     assertTrue(client.isRegistered());
     assertEquals(client.getName(), name);
+    assertEquals(client.getPostCode(), postCode);
   }
 
   @Test

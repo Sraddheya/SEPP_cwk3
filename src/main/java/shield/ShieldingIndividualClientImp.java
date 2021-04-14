@@ -4,49 +4,63 @@
 
 package shield;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.reflect.TypeToken;
-
-import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
+import java.lang.reflect.Type;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
   private String endpoint;
   private String CHI;
   private Boolean registered = false;
+  private String postcode;
+  private String name;
+  private String surname;
+  private String number;
+  private String cater_name;
+  private String cater_postcode;
+  private List<MessagingFoodBox> foodBoxes;
 
   // internal field only used for transmission purposes
   final class MessagingFoodBox {
-    // a field marked as transient is skipped in marshalling/unmarshalling
-    transient List<String> contents;
-
+    List<boxContents> contents;
     String delivered_by;
     String diet;
     String id;
     String name;
   }
 
+  final class boxContents{
+    String id;
+    String name;
+    String quantity;
+  }
+
   public ShieldingIndividualClientImp(String endpoint) { this.endpoint = endpoint; }
 
   @Override
   public boolean registerShieldingIndividual(String CHI) {
-    this.CHI = CHI;
     // construct the endpoint request
     String request = "/registerShieldingIndividual?CHI=" + CHI;
 
     try {
       // perform request
       String response = ClientIO.doGETRequest(endpoint + request);
-      if (response.equals("registered new") || response.equals("already registered")){
+      if (response!=null){
+        String[] result = response.split(",");
+        //List<String> result = new ArrayList<String>(Arrays.asList(response.split(",")));
         this.registered = true;
+        this.CHI = CHI;
+        this.postcode = result[0];
+        this.name = result[1];
+        this.surname = result[2];
+        this.number = result[3];
         return true;
       }
-
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -79,13 +93,25 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     } catch (Exception e) {
       e.printStackTrace();
     }
-
     return boxIds;
   }
 
   // **UPDATE2** REMOVED PARAMETER
   @Override
   public boolean placeOrder() {
+    // construct the endpoint request
+    String request = "/placeOrder?individual_id=1234&catering_business_name=catering1&catering_postcode=eh0111";
+    String data = "{\"contents\": [{\"id\":1,\"name\":\"cucumbers\",\"quantity\":200},{\"id\":2,\"name\":\"tomatoes\",\"quantity\":2}]}";
+
+    try {
+      // perform request
+      String response = ClientIO.doPOSTRequest(endpoint + request, data);
+      System.out.println("response: " + response);
+      return true;
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
     return false;
   }
 
@@ -111,26 +137,20 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     String request = "/getCaterers";
 
     // setup the response recipient
-    List<String> responseCaterer = new ArrayList<String>();
-
-    List<String> caterer = new ArrayList<String>();
+    List<String> responseCaterers = new ArrayList<String>();
 
     try {
       // perform request
       String response = ClientIO.doGETRequest(endpoint + request);
 
       Type listType = new TypeToken<List<String>>() {} .getType();
-      responseCaterer = new Gson().fromJson(response, listType);
-
-      for (String c : responseCaterer) {
-        caterer.add(c);
-      }
+      responseCaterers = new Gson().fromJson(response, listType);
 
     } catch (Exception e) {
       e.printStackTrace();
     }
 
-    return caterer;
+    return responseCaterers;
   }
 
   // **UPDATE**
@@ -161,7 +181,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
   @Override
   public int getFoodBoxNumber() {
-    return 0;
+    return foodBoxes.size();
   }
 
   @Override
@@ -234,6 +254,16 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   // **UPDATE**
   @Override
   public String getClosestCateringCompany() {
-    return null;
+    List<String> cateringCompanies = (List<String>) getCateringCompanies();
+    float minDist = -1;
+    for (String cater: cateringCompanies){
+      String[] info = cater.split(",");
+      if ((getDistance(postcode, info[2]) < minDist) || (minDist < 0)){
+        this.cater_name = info[1];
+        this.cater_postcode = info[2];
+        minDist = getDistance(postcode, cater_postcode);
+      }
+    }
+    return cater_name;
   }
 }

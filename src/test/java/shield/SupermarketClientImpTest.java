@@ -56,6 +56,7 @@ public class SupermarketClientImpTest {
     assertTrue(client.registerSupermarket(name, postCode));
     assertTrue(client.isRegistered());
     assertEquals(client.getName(), name);
+    assertEquals(client.getPostCode(), postCode);
   }
 
   @Test
