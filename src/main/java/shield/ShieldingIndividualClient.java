@@ -203,4 +203,6 @@ public interface ShieldingIndividualClient extends ShieldingIndividualClientEndp
   * @return business name of catering company
   */
   public String getClosestCateringCompany();
+
+  public String getPostcode();
 }

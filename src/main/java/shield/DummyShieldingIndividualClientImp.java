@@ -116,6 +116,9 @@ public class DummyShieldingIndividualClientImp implements ShieldingIndividualCli
   }
 
   @Override
+  public String getPostcode(){ return null; }
+
+  @Override
   public int getFoodBoxNumber() {
     return 0;
   }

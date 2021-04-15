@@ -47,19 +47,31 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     // construct the endpoint request
     String request = "/registerShieldingIndividual?CHI=" + CHI;
 
+    // setup the response recipient
+    List<String> responseInfo = new ArrayList<String>();
+
     try {
       // perform request
       String response = ClientIO.doGETRequest(endpoint + request);
-      if (response!=null){
-        String[] result = response.split(",");
-        //List<String> result = new ArrayList<String>(Arrays.asList(response.split(",")));
+
+      if (response.equals("already registered")){
         this.registered = true;
         this.CHI = CHI;
-        this.postcode = result[0];
-        this.name = result[1];
-        this.surname = result[2];
-        this.number = result[3];
         return true;
+      } else {
+        // unmarshal response
+        Type listType = new TypeToken<List<String>>() {} .getType();
+        responseInfo = new Gson().fromJson(response, listType);
+
+        if (responseInfo.size()==4){
+          this.registered = true;
+          this.CHI = CHI;
+          this.postcode = responseInfo.get(0).replace(" ", "_");
+          this.name = responseInfo.get(1);
+          this.surname = responseInfo.get(2);
+          this.number = responseInfo.get(3);
+          return true;
+        }
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -179,6 +191,11 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return CHI;
   }
 
+  // Helper Function added in ShieldingIndividualClient
+  public String getPostcode() {
+    return postcode;
+  }
+
   @Override
   public int getFoodBoxNumber() {
     return foodBoxes.size();
@@ -254,16 +271,20 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   // **UPDATE**
   @Override
   public String getClosestCateringCompany() {
-    List<String> cateringCompanies = (List<String>) getCateringCompanies();
+    Collection<String> caterers = getCateringCompanies();
     float minDist = -1;
-    for (String cater: cateringCompanies){
-      String[] info = cater.split(",");
-      if ((getDistance(postcode, info[2]) < minDist) || (minDist < 0)){
-        this.cater_name = info[1];
-        this.cater_postcode = info[2];
-        minDist = getDistance(postcode, cater_postcode);
+
+    for (String c: caterers){
+      String[] caterInfo = c.split(",");
+      String postcode2 = caterInfo[2].substring(0, 3) + "_" + caterInfo[2].substring(3);
+      float distance = getDistance(postcode, postcode2);
+
+      if(distance < minDist || minDist < 0){
+        this.cater_name = caterInfo[1];
+        this.cater_postcode = caterInfo[2];
       }
     }
     return cater_name;
   }
+
 }
