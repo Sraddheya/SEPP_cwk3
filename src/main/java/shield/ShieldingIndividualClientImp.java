@@ -23,7 +23,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   private String number;
   private String cater_name;
   private String cater_postcode;
-  private List<MessagingFoodBox> foodBoxes;
+  private List<MessagingFoodBox> allFoodBoxes;
 
   // internal field only used for transmission purposes
   final class MessagingFoodBox {
@@ -35,15 +35,32 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   }
 
   final class boxContents{
-    String id;
+    int id;
     String name;
-    String quantity;
+    int quantity;
   }
 
-  public ShieldingIndividualClientImp(String endpoint) { this.endpoint = endpoint; }
+  public ShieldingIndividualClientImp(String endpoint) {
+    this.endpoint = endpoint;
+  }
 
   @Override
   public boolean registerShieldingIndividual(String CHI) {
+    // INITIALISING ALL FOOD BOXES
+    // construct the endpoint request
+    String request_foodBox = "/showFoodBox?orderOption=catering&dietaryPreference=";
+
+    try {
+      // perform request
+      String response = ClientIO.doGETRequest(endpoint + request_foodBox);
+
+      // unmarshal response
+      Type listType = new TypeToken<List<MessagingFoodBox>>() {} .getType();
+      this.allFoodBoxes = new Gson().fromJson(response, listType);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
     // construct the endpoint request
     String request = "/registerShieldingIndividual?CHI=" + CHI;
 
@@ -198,32 +215,43 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
   @Override
   public int getFoodBoxNumber() {
-    return foodBoxes.size();
+    return 0;
   }
 
   @Override
   public String getDietaryPreferenceForFoodBox(int foodBoxId) {
-    return null;
+    MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
+    return box.diet;
   }
 
   @Override
   public int getItemsNumberForFoodBox(int foodBoxId) {
-    return 0;
+    MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
+    return box.contents.size();
   }
 
   @Override
-  public Collection<Integer> getItemIdsForFoodBox(int foodboxId) {
-    return null;
+  public Collection<Integer> getItemIdsForFoodBox(int foodBoxId) {
+    MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
+
+    List<Integer> itemIDs = new ArrayList<Integer>();
+
+    for (boxContents c: box.contents){
+      itemIDs.add(c.id);
+    }
+    return itemIDs;
   }
 
   @Override
   public String getItemNameForFoodBox(int itemId, int foodBoxId) {
-    return null;
+    MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
+    return box.contents.get(itemId-1).name;
   }
 
   @Override
   public int getItemQuantityForFoodBox(int itemId, int foodBoxId) {
-    return 0;
+    MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
+    return box.contents.get(itemId-1).quantity;
   }
 
   @Override
