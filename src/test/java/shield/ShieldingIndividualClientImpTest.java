@@ -73,12 +73,8 @@ public class ShieldingIndividualClientImpTest {
 
     client.registerShieldingIndividual(chi);
     client.getClosestCateringCompany();
-    /**
     client.pickFoodBox(1);
-    int quantity = client.getItemQuantityForFoodBox(1, 1);
-    client.changeItemQuantityForPickedFoodBox(1, quantity-1);
-     */
-    assertEquals(client.placeOrder(), true);
+    assertTrue(client.placeOrder());
   }
 
   /**
@@ -158,6 +154,18 @@ public class ShieldingIndividualClientImpTest {
     assertTrue(client.pickFoodBox(1));
     int quantity = client.getItemQuantityForFoodBox(1, 1);
     assertTrue(client.changeItemQuantityForPickedFoodBox(1, quantity-1));
+  }
+
+  @Test
+  public void testOrders() {
+    Random rand = new Random();
+    String chi = String.valueOf(rand.nextInt(10000));
+
+    client.registerShieldingIndividual(chi);
+    client.getClosestCateringCompany();
+    client.pickFoodBox(1);
+    assertTrue(client.placeOrder());
+    assertEquals(client.getOrderNumbers().size(),1);
   }
 
   @Test

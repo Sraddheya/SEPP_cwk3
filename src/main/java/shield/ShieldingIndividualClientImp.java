@@ -24,7 +24,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   private String cater_name;
   private String cater_postcode;
   private List<MessagingFoodBox> allFoodBoxes;
-  private List<MessagingFoodBox> orders;
+  private List<prevOrders> orders = new ArrayList<prevOrders>();
   private MessagingFoodBox pickedBox;
 
   // internal field only used for transmission purposes
@@ -40,6 +40,12 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     int id;
     String name;
     int quantity;
+  }
+
+  final class prevOrders{
+    Integer orderId;
+    String status;
+    MessagingFoodBox foodBox;
   }
 
   /**
@@ -157,21 +163,25 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   @Override
   public boolean placeOrder() {
     // construct the endpoint request
-    System.out.println(CHI + " " + cater_name + " " + cater_postcode);
     String request = "/placeOrder?individual_id=" + CHI + "&catering_business_name=" + cater_name + "&catering_postcode=" + cater_postcode;
-    String data = "{\"contents\": [{\"id\":1,\"name\":\"cucumbers\",\"quantity\":2},{\"id\":2,\"name\":\"tomatoes\",\"quantity\":2}]}";
-    /**String data = "{\"contents\": [";
+
+    // construct data to be passed to post request
+    String data = "{\"contents\": [";
     for (boxContents c : pickedBox.contents){
       data += "{\"id\":" + c.id + ",\"name\":\"" + c.name + "\",\"quantity\":" + c.quantity + "},";
     }
     data = data.substring(0, data.length()-1) + "]}";
-     */
-    System.out.println(data);
+
+    prevOrders newOrder = new prevOrders();
 
     try {
       // perform request
       String response = ClientIO.doPOSTRequest(endpoint + request, data);
-      System.out.println("response: " + response);
+      newOrder.orderId = Integer.parseInt(response);
+      newOrder.status = "placed";
+      newOrder.foodBox = pickedBox;
+      pickedBox = null;
+      this.orders.add(newOrder);
       return true;
     } catch (Exception e) {
       e.printStackTrace();
@@ -182,16 +192,72 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
   @Override
   public boolean editOrder(int orderNumber) {
+    // construct the endpoint request
+    String request = "/editOrder?order_id=" + orderNumber;
+
+    // construct data to be passed to post request
+    String data = "{\"contents\": [";
+    for (prevOrders o : orders){
+      if (o.orderId == orderNumber){
+        for (boxContents c : pickedBox.contents){
+          data += "{\"id\":" + c.id + ",\"name\":\"" + c.name + "\",\"quantity\":" + c.quantity + "},";
+        }
+      }
+    }
+    data = data.substring(0, data.length()-1) + "]}";
+
+    try {
+      // perform request
+      String response = ClientIO.doPOSTRequest(endpoint + request, data);
+
+      if (response.equals("True")){
+        return true;
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
     return false;
   }
 
   @Override
   public boolean cancelOrder(int orderNumber) {
+    // construct the endpoint request
+    String request = "/cancelOrder?order_id=" + orderNumber;
+
+    try {
+      // perform request
+      String response = ClientIO.doGETRequest(endpoint + request);
+
+      if (response.equals("True")){
+        return true;
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
     return false;
   }
 
   @Override
   public boolean requestOrderStatus(int orderNumber) {
+    // construct the endpoint request
+    String request = "/requestStatus?order_id=" + orderNumber;
+
+    try {
+      // perform request
+      String response = ClientIO.doGETRequest(endpoint + request);
+
+      for (prevOrders o : orders){
+        if (o.orderId == orderNumber){
+          //switch
+        }
+      }
+      return true;
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
     return false;
   }
 
@@ -394,33 +460,129 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return true;
   }
 
+  /**
+   * Returns the collection of the order numbers placed.
+   *
+   * @return collection of the order numbers placed
+   */
   @Override
   public Collection<Integer> getOrderNumbers() {
-    return null;
+    List<Integer> orderIds = new ArrayList<Integer>();
+
+    for (prevOrders o : orders){
+      orderIds.add(o.orderId);
+    }
+    return orderIds;
   }
 
+  /**
+   * Returns the status of the order for the requested number as stored locally by
+   * the client.
+   *
+   * @param orderNumber the order number
+   * @return status of the order for the requested number
+   */
   @Override
   public String getStatusForOrder(int orderNumber) {
+    for (prevOrders o : orders){
+      if (o.orderId == orderNumber){
+        return o.status;
+      }
+    }
     return null;
   }
 
+  /**
+   * Returns the item ids for the items of the requested order as stored locally by
+   * the client.
+   *
+   * @param  orderNumber the order number
+   * @return item ids for the items of the requested order
+   */
   @Override
   public Collection<Integer> getItemIdsForOrder(int orderNumber) {
-    return null;
+    List<Integer> itemIDs = new ArrayList<Integer>();
+
+    for (prevOrders o : orders){
+      if (o.orderId == orderNumber){
+        for (boxContents c: o.foodBox.contents){
+          itemIDs.add(c.id);
+        }
+      }
+    }
+    return itemIDs;
   }
 
+  /**
+   * Returns the name of the item for the requested order as stored locally by
+   * the client.
+   *
+   * @param  itemId the food box id as last returned from the server
+   * @param  orderNumber the order number
+   * @return name of the item for the requested order
+   */
   @Override
   public String getItemNameForOrder(int itemId, int orderNumber) {
+    for (prevOrders o : orders){
+      if (o.orderId == orderNumber){
+        for (boxContents c: o.foodBox.contents){
+          if (c.id == itemId){
+            return c.name;
+          }
+        }
+      }
+    }
     return null;
   }
 
+  /**
+   * Returns the quantity of the item for the requested order as stored locally by
+   * the client.
+   *
+   * @param  itemId the food box id as last returned from the server
+   * @param  orderNumber the order number
+   * @return quantity of the item for the requested order
+   */
   @Override
   public int getItemQuantityForOrder(int itemId, int orderNumber) {
+    for (prevOrders o : orders){
+      if (o.orderId == orderNumber){
+        for (boxContents c: o.foodBox.contents){
+          if (c.id == itemId){
+            return c.quantity;
+          }
+        }
+      }
+    }
     return 0;
   }
 
+  /**
+   * Returns true if quantity of the item for the requested order was changed.
+   *
+   * This method changes the quantities for a placed order as stored locally
+   * by the client.
+   * In order to sync with the server, one needs to call the editOrder()
+   * method separately.
+   *
+   * @param  itemId the food box id as last returned from the server
+   * @param  orderNumber the order number
+   * @param  quantity the food box item quantity to be set
+   * @return true if quantity of the item for the requested order was changed
+   */
   @Override
   public boolean setItemQuantityForOrder(int itemId, int orderNumber, int quantity) {
+    for (prevOrders o : orders){
+      if (o.orderId == orderNumber && o.status.equals("placed")){
+        for (boxContents c : pickedBox.contents){
+          if (c.id == itemId){
+            System.out.println(c.quantity);
+            c.quantity = quantity;
+            System.out.println(c.quantity);
+          }
+        }
+      }
+    }
     return false;
   }
 
