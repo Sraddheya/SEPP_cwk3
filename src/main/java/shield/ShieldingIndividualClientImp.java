@@ -4,13 +4,13 @@
 
 package shield;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.ArrayList;
-import java.lang.reflect.Type;
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
@@ -24,6 +24,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   private String cater_name;
   private String cater_postcode;
   private List<MessagingFoodBox> allFoodBoxes;
+  private List<MessagingFoodBox> orders;
+  private MessagingFoodBox pickedBox;
 
   // internal field only used for transmission purposes
   final class MessagingFoodBox {
@@ -40,13 +42,14 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     int quantity;
   }
 
+  /**
+   * Sets endpoint for all the following HTTP requests and initialises allFoodBoxes
+   *
+   * @param endpoint
+   */
   public ShieldingIndividualClientImp(String endpoint) {
     this.endpoint = endpoint;
-  }
 
-  @Override
-  public boolean registerShieldingIndividual(String CHI) {
-    // INITIALISING ALL FOOD BOXES
     // construct the endpoint request
     String request_foodBox = "/showFoodBox?orderOption=catering&dietaryPreference=";
 
@@ -60,7 +63,22 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
 
+  /**
+   * Returns true if the operation occurred correctly (i,e. client is newly
+   * registered or already registered) and false if input incorrect (null or CHI
+   * number not respecting this format:
+   * https://datadictionary.nhs.uk/attributes/community_health_index_number.html)
+   * or any of the data retrieved from the server for the shielding individual is
+   * null.
+   *
+   * @param CHI CHI number of the shielding individual
+   * @return true if the operation occurred correctly
+   */
+  @Override
+  public boolean registerShieldingIndividual(String CHI) {
+    //REGISTERING INDIVIDUAL
     // construct the endpoint request
     String request = "/registerShieldingIndividual?CHI=" + CHI;
 
@@ -97,6 +115,12 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return false;
   }
 
+  /**
+   * Returns collection of food box ids if the operation occurred correctly
+   *
+   * @param  dietaryPreference (of individual)
+   * @return collection of food box ids withe corresponding dietary preference
+   */
   @Override
   public Collection<String> showFoodBoxes(String dietaryPreference) {
     // construct the endpoint request
@@ -125,12 +149,24 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return boxIds;
   }
 
-  // **UPDATE2** REMOVED PARAMETER
+  /**
+   * Returns true if the operation occurred correctly
+   *
+   * @return true if the operation occurred correctly
+   */
   @Override
   public boolean placeOrder() {
     // construct the endpoint request
-    String request = "/placeOrder?individual_id=1234&catering_business_name=catering1&catering_postcode=eh0111";
-    String data = "{\"contents\": [{\"id\":1,\"name\":\"cucumbers\",\"quantity\":200},{\"id\":2,\"name\":\"tomatoes\",\"quantity\":2}]}";
+    System.out.println(CHI + " " + cater_name + " " + cater_postcode);
+    String request = "/placeOrder?individual_id=" + CHI + "&catering_business_name=" + cater_name + "&catering_postcode=" + cater_postcode;
+    String data = "{\"contents\": [{\"id\":1,\"name\":\"cucumbers\",\"quantity\":2},{\"id\":2,\"name\":\"tomatoes\",\"quantity\":2}]}";
+    /**String data = "{\"contents\": [";
+    for (boxContents c : pickedBox.contents){
+      data += "{\"id\":" + c.id + ",\"name\":\"" + c.name + "\",\"quantity\":" + c.quantity + "},";
+    }
+    data = data.substring(0, data.length()-1) + "]}";
+     */
+    System.out.println(data);
 
     try {
       // perform request
@@ -159,7 +195,13 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return false;
   }
 
-  // **UPDATE**
+  /**
+   * Returns collection of catering companies and their locations in the format
+   * [positionOfCaterer1,nameOfCaterer1,postcodeOfCaterer1,
+   *  positionOfCaterer2,nameOfCaterer2,postcodeOfCaterer2]
+   *
+   * @return collection of catering companies and their locations
+   */
   @Override
   public Collection<String> getCateringCompanies() {
     // construct the endpoint request
@@ -172,6 +214,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
       // perform request
       String response = ClientIO.doGETRequest(endpoint + request);
 
+      // unmarshal response
       Type listType = new TypeToken<List<String>>() {} .getType();
       responseCaterers = new Gson().fromJson(response, listType);
 
@@ -182,7 +225,14 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return responseCaterers;
   }
 
-  // **UPDATE**
+  /**
+   * Returns the distance between two locations based on their post codes where postcodes
+   * must start with EH and be separated by an underscore, e.g, EH11_2DR
+   *
+   * @param postCode1 post code of one location
+   * @param postCode2 post code of another location
+   * @return the distance as a float between the two locations
+   */
   @Override
   public float getDistance(String postCode1, String postCode2) {
     // construct the endpoint request
@@ -213,23 +263,50 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return postcode;
   }
 
+  /**
+   * Returns the number of available food boxes after quering the server
+   *
+   * @return number of available food boxes after quering the server
+   */
   @Override
   public int getFoodBoxNumber() {
-    return 0;
+    return allFoodBoxes.size();
   }
 
+  /**
+   * Returns the dietary preference that this specific food box satisfies
+   *
+   * @param  foodBoxId the food box id as last returned from the server
+   * @return dietary preference
+   */
   @Override
   public String getDietaryPreferenceForFoodBox(int foodBoxId) {
     MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
     return box.diet;
   }
 
+  /**
+   * Returns the number of items in this specific food box (not the quantity
+   * of each item). For example if a box has:
+   *  - 3 bananas
+   *  - 5 bottles of milk
+   * it should return 2.
+   *
+   * @param  foodBoxId the food box id as last returned from the server
+   * @return number of items in the food box
+   */
   @Override
   public int getItemsNumberForFoodBox(int foodBoxId) {
     MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
     return box.contents.size();
   }
 
+  /**
+   * Returns the collection of item ids of the requested foodbox
+   *
+   * @param  foodBoxId the food box id as last returned from the server
+   * @return collection of item ids of the requested foodbox
+   */
   @Override
   public Collection<Integer> getItemIdsForFoodBox(int foodBoxId) {
     MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
@@ -242,26 +319,79 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return itemIDs;
   }
 
+  /**
+   * Returns the item name of the item in the requested foodbox
+   *
+   * @param  itemId the food box id as last returned from the server
+   * @param  foodBoxId the food box id as last returned from the server
+   * @return the requested item name
+   */
   @Override
   public String getItemNameForFoodBox(int itemId, int foodBoxId) {
     MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
-    return box.contents.get(itemId-1).name;
+    for (boxContents c: box.contents){
+      if (c.id == itemId){
+        return c.name;
+      }
+    }
+    return null;
   }
 
+  /**
+   * Returns the item quantity of the item in the requested foodbox
+   *
+   * @param  itemId the food box id as last returned from the server
+   * @param  foodBoxId the food box id as last returned from the server
+   * @return the requested item quantity
+   */
   @Override
   public int getItemQuantityForFoodBox(int itemId, int foodBoxId) {
     MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
-    return box.contents.get(itemId-1).quantity;
+    for (boxContents c: box.contents){
+      if (c.id == itemId){
+        return c.quantity;
+      }
+    }
+    return 0;
   }
 
+  /**
+   * Returns true if the requested foodbox was picked and foodboxId passed was valid.
+   *
+   * This method marks internally in the client a specific food box (using its Id)
+   * that is to be used for placing an order via the placeOrder() method.
+   * While this box is marked, but not yet placed, the
+   * changeItemQuantityForPickedFoodBox() can be used to change quantities.
+   * Once an order is successfully placed via PlaceOrder(), the marked box
+   * should be cleared.
+   *
+   * @param  foodBoxId the food box id as last returned from the server
+   * @return true if the requested foodbox was picked
+   */
   @Override
   public boolean pickFoodBox(int foodBoxId) {
-    return false;
+    this.pickedBox = allFoodBoxes.get(foodBoxId-1);
+    return true;
   }
 
+  /**
+   * Returns true if the item quantity for the picked foodbox was changed to a valid
+   * quantity (quantity can only be decreased).
+   *
+   * @param  itemId the food box id as last returned from the server
+   * @param  quantity the food box item quantity to be set
+   * @return true if the item quantity for the picked foodbox was changed
+   */
   @Override
   public boolean changeItemQuantityForPickedFoodBox(int itemId, int quantity) {
-    return false;
+    for (boxContents c : pickedBox.contents){
+      if (c.id == itemId){
+        System.out.println(c.quantity);
+        c.quantity = quantity;
+        System.out.println(c.quantity);
+      }
+    }
+    return true;
   }
 
   @Override
@@ -294,9 +424,11 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return false;
   }
 
-  // **UPDATE2** REMOVED METHOD getDeliveryTimeForOrder
-
-  // **UPDATE**
+  /**
+   * Returns closest catering company serving orders based on our location
+   *
+   * @return business name of catering company
+   */
   @Override
   public String getClosestCateringCompany() {
     Collection<String> caterers = getCateringCompanies();
@@ -304,8 +436,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
     for (String c: caterers){
       String[] caterInfo = c.split(",");
-      String postcode2 = caterInfo[2].substring(0, 3) + "_" + caterInfo[2].substring(3);
-      float distance = getDistance(postcode, postcode2);
+      float distance = getDistance(postcode, caterInfo[2]);
 
       if(distance < minDist || minDist < 0){
         this.cater_name = caterInfo[1];
