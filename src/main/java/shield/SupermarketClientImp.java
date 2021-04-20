@@ -1,6 +1,3 @@
-/**
- *
- */
 
 package shield;
 
@@ -13,14 +10,26 @@ public class SupermarketClientImp implements SupermarketClient {
 
   public SupermarketClientImp(String endpoint) { this.endpoint = endpoint; }
 
-  /** TO DO
-   * endpoints not working for now so leave as is
+  /**
+   * Returns true if the operation occurred correctly (Supermarket is
+   * registered or already registered).
+   *
+   * @param name name of the business
+   * @param postCode post code of the business
+   * @return true if the operation occurred correctly
    */
   @Override
   public boolean registerSupermarket(String name, String postCode) {
+    // Make sure parameters are not null
+    assert(!name.equals(null) && !postCode.equals(null));
+
+    // construct the endpoint request
     String request = "/registerSupermarket?business_name=" + name + "&postcode=" + postCode;
+
     try {
+      // perform request
       String response = ClientIO.doGETRequest(endpoint + request);
+
       if (response.equals("registered new") || response.equals("already registered")) {
         this.registered = true;
         this.name = name;
@@ -33,12 +42,26 @@ public class SupermarketClientImp implements SupermarketClient {
     return false;
   }
 
-  // **UPDATE2** ADDED METHOD
+  /**
+   * Returns true if the operation occurred correctly. Assuming that the the Supermarket
+   * UI has already made sure that a Shielding individual cna only place one order a week.
+   *
+   * @param CHI CHI number of the shielding individual associated with this order
+   * @param orderNumber the order number
+   * @return true if the operation occurred correctly
+   */
   @Override
   public boolean recordSupermarketOrder(String CHI, int orderNumber) {
-    String request = "/recordSupermarketOrder?individual_id=" + CHI + "&order_number=" + orderNumber + "&supermarket_business_name=" + getName() + "&supermarket_postcode=" + getPostCode();
+    // Make sure parameters are not null
+    assert(!CHI.equals(null) && orderNumber>=0);
+
+    // construct the endpoint request
+    String request = "/recordSupermarketOrder?individual_id=" + CHI + "&order_number=" + orderNumber + "&supermarket_business_name=" + name + "&supermarket_postcode=" + postcode;
+    System.out.println(request);
     try {
+      // perform request
       String response = ClientIO.doGETRequest(endpoint + request);
+      System.out.println(response);
       if (response.equals("True")) {
         return true;
       }
@@ -48,11 +71,23 @@ public class SupermarketClientImp implements SupermarketClient {
     return false;
   }
 
-  // **UPDATE**
+  /**
+   * Returns true if the operation occurred correctly.
+   *
+   * @param orderNumber the order number
+   * @param status status of the order for the requested number
+   * @return true if the operation occurred correctly
+   */
   @Override
   public boolean updateOrderStatus(int orderNumber, String status) {
+    // Make sure parameters are not null
+    assert(orderNumber>=0 && !status.equals(null));
+
+    // construct the endpoint request
     String request = "/updateSupermarketOrderStatus?order_id=" + orderNumber + "&newStatus=" + status;
+
     try {
+      // perform request
       String response = ClientIO.doGETRequest(endpoint + request);
       if (response.equals("True")) {
         return true;
