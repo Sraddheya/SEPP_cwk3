@@ -8,6 +8,7 @@ import org.junit.jupiter.api.*;
 
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
 import java.time.LocalDateTime;
@@ -55,20 +56,21 @@ public class ShieldingIndividualClientImpTest {
   @Test
   public void testShieldingIndividualNewRegistration() {
     Random rand = new Random();
-    String falseCHI = String.valueOf(rand.nextInt(100000));
+    String temp = String.valueOf(rand.nextInt(10000));
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
     String date = dtf.format(now);
-    String temp = String.valueOf(rand.nextInt(10000));
     String CHI = date + temp;
 
     // Null parameters should be asserted
-    //assertTrue(client.registerShieldingIndividual(null));
+    //client.registerShieldingIndividual(null);
 
-    // Too short CHI should give exception
+    // CHI not 10 digits should give exception
     assertFalse(client.registerShieldingIndividual(date));
+    // CHI not all numeric digits should give exception
+    assertFalse(client.registerShieldingIndividual(date + "abcd"));
     // Not valid date should give exception
-    assertFalse(client.registerShieldingIndividual(falseCHI + falseCHI));
+    assertFalse(client.registerShieldingIndividual("000000" + temp));
 
     //Test if new shielding individual registered
     assertTrue(client.registerShieldingIndividual(CHI));
@@ -96,7 +98,15 @@ public class ShieldingIndividualClientImpTest {
    */
   @Test
   public void testShowFoodBoxes() {
+    // Null parameters should be asserted
+    //client.showFoodBoxes(null);
+
+    // Valid dietary preferences
     assertEquals(client.showFoodBoxes("none").size(), 3);
+    assertEquals(client.showFoodBoxes("pollotarian").size(), 1);
+    assertEquals(client.showFoodBoxes("vegan").size(), 1);
+    // Invalid dietary preference should return an empty list
+    assertEquals(client.showFoodBoxes("Kosher").size(), 0);
   }
 
   @Test
@@ -121,7 +131,7 @@ public class ShieldingIndividualClientImpTest {
     //client.getDistance(null, postCode2);
 
     // Incorrect postCode format should give exception
-    assertEquals(client.getDistance(postCode_part11, postCode_part21), 0);
+    assertEquals(client.getDistance(postCode_part12, postCode_part22), 0);
     assertEquals(client.getDistance(postCode_part11 + "_" + postCode_part12, postCode_part21 + "_" + postCode_part22), 0);
     assertEquals(client.getDistance("EH" + postCode_part12, "EH" + postCode_part22), 0);
 
@@ -146,6 +156,7 @@ public class ShieldingIndividualClientImpTest {
     assertEquals(client.getDietaryPreferenceForFoodBox(1), "none");
     assertEquals(client.getDietaryPreferenceForFoodBox(2), "pollotarian");
     assertEquals(client.getDietaryPreferenceForFoodBox(5), "vegan");
+    assertEquals(client.getDietaryPreferenceForFoodBox(5), "vegan");
   }
 
   @Test
@@ -160,11 +171,15 @@ public class ShieldingIndividualClientImpTest {
 
   @Test
   public void testGetItemIdsForFoodBox(){
-    // Null parameters should be asserted
-    client.getItemIdsForFoodBox(-1);
+    Collection<Integer> knownIds = new ArrayList<>();
+    knownIds.add(1);
+    knownIds.add(3);
+    knownIds.add(7);
 
-    //assertEquals(client.getItemIdsForFoodBox(1), "[1, 2, 6]");
-    assertEquals(client.getItemIdsForFoodBox(2), "[1, 3, 7]");
+    // Null parameters should be asserted
+    //client.getItemIdsForFoodBox(-1);
+
+    assertEquals(client.getItemIdsForFoodBox(2), knownIds);
   }
 
   @Test
@@ -195,13 +210,28 @@ public class ShieldingIndividualClientImpTest {
 
   @Test
   public void testPickFoodBox(){
+    // Null parameters should be asserted
+    //client.pickFoodBox(-1);
+
     assertTrue(client.pickFoodBox(1));
   }
 
   @Test
   public void testChangeItemQuantityForPickedFoodBox(){
+    // Null parameters should be asserted
+    //client.changeItemQuantityForPickedFoodBox(-1, -1);
+    //client.changeItemQuantityForPickedFoodBox(1, -1);
+    //client.changeItemQuantityForPickedFoodBox(-1, 1);
+
+    // Box not picked yet should give exception
+    assertFalse(client.changeItemQuantityForPickedFoodBox(1, 1));
+
     assertTrue(client.pickFoodBox(1));
     int quantity = client.getItemQuantityForFoodBox(1, 1);
+
+    // Quantity is being increased should give exception
+    assertFalse(client.changeItemQuantityForPickedFoodBox(1, quantity+1));
+
     assertTrue(client.changeItemQuantityForPickedFoodBox(1, quantity-1));
   }
 

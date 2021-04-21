@@ -20,11 +20,11 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   private String postcode;
   private String cater_name;
   private String cater_postcode;
-  private List<MessagingFoodBox> allFoodBoxes;
+  private List<MessagingFoodBox> food_Boxes;
   private List<prevOrders> orders = new ArrayList<prevOrders>();
-  private MessagingFoodBox pickedBox;
+  private MessagingFoodBox picked_Box;
 
-  // internal field only used for transmission purposes
+  // Internal field to store information about a food box
   final class MessagingFoodBox {
     List<boxContents> contents;
     String delivered_by;
@@ -33,18 +33,24 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     String name;
   }
 
+  // Internal field to store information about the contents of a food box
   final class boxContents{
     int id;
     String name;
     int quantity;
   }
 
+  // Internal field to store information about a placed order
   final class prevOrders{
     Integer orderId;
     String status;
     MessagingFoodBox foodBox;
   }
 
+  /**
+   * Class to enable custom exception throws when the format given is incorrect,
+   * e.g, the format of a CHI number.
+   */
   public class IncorrectFormatException extends Exception {
 
     public IncorrectFormatException(String message) {
@@ -53,11 +59,15 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   }
 
   /**
-   * Sets endpoint for all the following HTTP requests and initialises allFoodBoxes
+   * Sets endpoint for all the following HTTP requests and initialises food_Boxes so
+   * it can be used in subsequent functions such as getDietaryPreferenceForFoodBox.
    *
    * @param endpoint
    */
   public ShieldingIndividualClientImp(String endpoint) {
+    // Make sure parameters are not null
+    assert(!endpoint.equals(null));
+
     this.endpoint = endpoint;
 
     // construct the endpoint request
@@ -69,22 +79,28 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
       // unmarshal response
       Type listType = new TypeToken<List<MessagingFoodBox>>() {} .getType();
-      this.allFoodBoxes = new Gson().fromJson(response, listType);
+      this.food_Boxes = new Gson().fromJson(response, listType);
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
 
   /**
-   * Returns true if the operation occurred correctly (i,e. client is newly
-   * registered or already registered) and false if input incorrect (null or CHI
-   * number not respecting this format:
+   * This method returns true if the operation occurred correctly (this includes
+   * re-registrations) and false if input incorrect (null or CHI number not
+   * respecting this format:
    * https://datadictionary.nhs.uk/attributes/community_health_index_number.html)
    * or any of the data retrieved from the server for the shielding individual is
    * null.
    *
    * @param CHI CHI number of the shielding individual
    * @return true if the operation occurred correctly
+   * @IncorrectFormatException if the CHI number if not 10 digits long
+   * @Exception if CHI does not consist of all numeric digits or
+   *            if CHI does not start with valid birth date or
+   *            if http request unsuccessful or
+   *            if unmarshal unsuccessful
+   *
    */
   @Override
   public boolean registerShieldingIndividual(String CHI) {
@@ -94,14 +110,14 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     // Make sure CHI format is correct
     if (CHI.length()!=10) {
       try {
-        throw new IncorrectFormatException("CHI must be ten digits long and start with your date of birth");
+        throw new IncorrectFormatException("CHI must be ten numeric digits long and start with your date of birth");
       } catch (IncorrectFormatException e) {
         e.printStackTrace();
       }
       return false;
     }
-
     try {
+      Long.parseLong(CHI);
       DateTimeFormatter formatter = DateTimeFormatter.ofPattern("ddMMyy");
       LocalDateTime dateTime = LocalDate.parse(CHI.substring(0,6), formatter).atStartOfDay();
     } catch (Exception e) {
@@ -129,8 +145,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
         if (responseInfo.size()==4){
           this.registered = true;
           this.CHI = CHI;
+          // Replacing so format of postcode is compatible with getDistance
           this.postcode = responseInfo.get(0).replace(" ", "_");
-          System.out.println(postcode);
           return true;
         }
       }
@@ -142,13 +158,18 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   }
 
   /**
-   * Returns collection of food box ids if the operation occurred correctly
+   * Returns collection of food box ids if the operation occurred correctly.
    *
    * @param  dietaryPreference (of individual)
    * @return collection of food box ids withe corresponding dietary preference
+   * @Exception if http request unsuccessful or
+   *            if unmarshal unsuccessful
    */
   @Override
   public Collection<String> showFoodBoxes(String dietaryPreference) {
+    // Make sure parameters are not null
+    assert(!dietaryPreference.equals(null));
+
     // construct the endpoint request
     String request = "/showFoodBox?orderOption=catering&dietaryPreference=" + dietaryPreference;
 
@@ -187,7 +208,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
     // construct data to be passed to post request
     String data = "{\"contents\": [";
-    for (boxContents c : pickedBox.contents){
+    for (boxContents c : picked_Box.contents){
       data += "{\"id\":" + c.id + ",\"name\":\"" + c.name + "\",\"quantity\":" + c.quantity + "},";
     }
     data = data.substring(0, data.length()-1) + "]}";
@@ -199,8 +220,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
       String response = ClientIO.doPOSTRequest(endpoint + request, data);
       newOrder.orderId = Integer.parseInt(response);
       newOrder.status = "placed";
-      newOrder.foodBox = pickedBox;
-      pickedBox = null;
+      newOrder.foodBox = picked_Box;
+      picked_Box = null;
       this.orders.add(newOrder);
       return true;
     } catch (Exception e) {
@@ -219,7 +240,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     String data = "{\"contents\": [";
     for (prevOrders o : orders){
       if (o.orderId == orderNumber){
-        for (boxContents c : pickedBox.contents){
+        for (boxContents c : picked_Box.contents){
           data += "{\"id\":" + c.id + ",\"name\":\"" + c.name + "\",\"quantity\":" + c.quantity + "},";
         }
       }
@@ -287,6 +308,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    *  positionOfCaterer2,nameOfCaterer2,postcodeOfCaterer2]
    *
    * @return collection of catering companies and their locations
+   * @Exception if http request unsuccessful or
+   *            if unmarshal unsuccessful
    */
   @Override
   public Collection<String> getCateringCompanies() {
@@ -313,11 +336,11 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
   /**
    * Returns the distance between two locations based on their post codes where postcodes
-   * must start with EH and be separated by an underscore, e.g, EH11_2DR
+   * must start with EH and be separated by an underscore, e.g, EH11_2DR.
    *
    * @param postCode1 post code of one location
    * @param postCode2 post code of another location
-   * @return the distance as a float between the two locations
+   * @return the distance as a float between the two locations or 0 if postcode format is incorrect
    */
   @Override
   public float getDistance(String postCode1, String postCode2) {
@@ -357,7 +380,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return CHI;
   }
 
-  // Helper Function added in ShieldingIndividualClient
+  // Helper function added in ShieldingIndividualClient
   public String getPostcode() {
     return postcode;
   }
@@ -369,7 +392,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    */
   @Override
   public int getFoodBoxNumber() {
-    return allFoodBoxes.size();
+    return food_Boxes.size();
   }
 
   /**
@@ -380,10 +403,10 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    */
   @Override
   public String getDietaryPreferenceForFoodBox(int foodBoxId) {
-    // Make sure parameters are not null
+    // Make sure parameters are valid
     assert(foodBoxId>=0);
 
-    MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
+    MessagingFoodBox box = food_Boxes.get(foodBoxId-1);
     return box.diet;
   }
 
@@ -399,10 +422,10 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    */
   @Override
   public int getItemsNumberForFoodBox(int foodBoxId) {
-    // Make sure parameters are not null
+    // Make sure parameters are valid
     assert(foodBoxId>=0);
 
-    MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
+    MessagingFoodBox box = food_Boxes.get(foodBoxId-1);
     return box.contents.size();
   }
 
@@ -414,10 +437,10 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    */
   @Override
   public Collection<Integer> getItemIdsForFoodBox(int foodBoxId) {
-    // Make sure parameters are not null
+    // Make sure parameters are valid
     assert(foodBoxId>=0);
 
-    MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
+    MessagingFoodBox box = food_Boxes.get(foodBoxId-1);
 
     List<Integer> itemIDs = new ArrayList<Integer>();
 
@@ -432,14 +455,14 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    *
    * @param  itemId the food box id as last returned from the server
    * @param  foodBoxId the food box id as last returned from the server
-   * @return the requested item name
+   * @return the requested item name or null if item not in food box
    */
   @Override
   public String getItemNameForFoodBox(int itemId, int foodBoxId) {
-    // Make sure parameters are not null
+    // Make sure parameters are valid
     assert(itemId>=0 && foodBoxId>=0);
 
-    MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
+    MessagingFoodBox box = food_Boxes.get(foodBoxId-1);
     for (boxContents c: box.contents){
       if (c.id == itemId){
         return c.name;
@@ -453,14 +476,14 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    *
    * @param  itemId the food box id as last returned from the server
    * @param  foodBoxId the food box id as last returned from the server
-   * @return the requested item quantity
+   * @return the requested item quantity or 0 if item not in foodbox
    */
   @Override
   public int getItemQuantityForFoodBox(int itemId, int foodBoxId) {
-    // Make sure parameters are not null
+    // Make sure parameters are valid
     assert(itemId>=0 && foodBoxId>=0);
 
-    MessagingFoodBox box = allFoodBoxes.get(foodBoxId-1);
+    MessagingFoodBox box = food_Boxes.get(foodBoxId-1);
     for (boxContents c: box.contents){
       if (c.id == itemId){
         return c.quantity;
@@ -484,7 +507,10 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    */
   @Override
   public boolean pickFoodBox(int foodBoxId) {
-    this.pickedBox = allFoodBoxes.get(foodBoxId-1);
+    // Make sure parameters are valid
+    assert(foodBoxId>=0);
+
+    this.picked_Box = food_Boxes.get(foodBoxId-1);
     return true;
   }
 
@@ -498,11 +524,33 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    */
   @Override
   public boolean changeItemQuantityForPickedFoodBox(int itemId, int quantity) {
-    for (boxContents c : pickedBox.contents){
+    // Make sure parameters are valid
+    assert(itemId>=0 && quantity>=0);
+
+    // Check if box has been picked
+    if (picked_Box==null){
+      try {
+        throw new IncorrectFormatException("You must first pick a box");
+      } catch (IncorrectFormatException e) {
+        e.printStackTrace();
+      }
+      return false;
+    }
+
+    for (boxContents c : picked_Box.contents){
       if (c.id == itemId){
-        System.out.println(c.quantity);
+
+        // Check if quantity is being decreased
+        if (quantity >= c.quantity){
+          try {
+            throw new IncorrectFormatException("Can only decrease quantity");
+          } catch (IncorrectFormatException e) {
+            e.printStackTrace();
+          }
+          return false;
+        }
+
         c.quantity = quantity;
-        System.out.println(c.quantity);
       }
     }
     return true;
@@ -622,7 +670,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   public boolean setItemQuantityForOrder(int itemId, int orderNumber, int quantity) {
     for (prevOrders o : orders){
       if (o.orderId == orderNumber && o.status.equals("placed")){
-        for (boxContents c : pickedBox.contents){
+        for (boxContents c : picked_Box.contents){
           if (c.id == itemId){
             System.out.println(c.quantity);
             c.quantity = quantity;
