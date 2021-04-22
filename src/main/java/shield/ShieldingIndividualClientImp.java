@@ -101,7 +101,6 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    *            if CHI does not start with valid birth date or
    *            if http request unsuccessful or
    *            if unmarshal unsuccessful
-   *
    */
   @Override
   public boolean registerShieldingIndividual(String CHI) {
@@ -203,9 +202,24 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    * Returns true if the operation occurred correctly
    *
    * @return true if the operation occurred correctly
+   * @IncorrectFormatException individual is not registered or
+   *                           no box has been picked or
+   *                           order has already been placed that week
+   * @Exception if http request unsuccessful or
+   *            if unmarshal unsuccessful
    */
   @Override
   public boolean placeOrder() {
+    // Check is individual is registered
+    if (registered==false){
+      try {
+        throw new IncorrectFormatException("You must first register as a Shielding Individual");
+      } catch (IncorrectFormatException e) {
+        e.printStackTrace();
+      }
+      return false;
+    }
+
     // Check if box has been picked
     if (picked_Box==null){
       try {
@@ -219,13 +233,13 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     // Get today's date
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
-    LocalDateTime lastWeek = now.minusWeeks(1);
 
     // Check order already placed this week
+    LocalDateTime lastWeek = now.minusWeeks(1);
     for (prevOrders o : orders){
       if (o.datePlaced.compareTo(lastWeek)>=0 && !o.status.equals("cancelled")){
         try {
-          throw new IncorrectFormatException("Can only order once a week");
+          throw new IncorrectFormatException("Order has already been placed this week");
         } catch (IncorrectFormatException e) {
           e.printStackTrace();
         }
@@ -233,10 +247,10 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
       }
     }
 
-    // construct the endpoint request
+    // Construct the endpoint request
     String request = "/placeOrder?individual_id=" + CHI + "&catering_business_name=" + cater_name + "&catering_postcode=" + cater_postcode;
 
-    // construct data to be passed to post request
+    // Construct data to be passed to post request
     String data = "{\"contents\": [";
     for (boxContents c : picked_Box.contents){
       data += "{\"id\":" + c.id + ",\"name\":\"" + c.name + "\",\"quantity\":" + c.quantity + "},";
@@ -246,7 +260,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     prevOrders newOrder = new prevOrders();
 
     try {
-      // perform request
+      // Perform request
       String response = ClientIO.doPOSTRequest(endpoint + request, data);
 
       newOrder.orderId = Integer.parseInt(response);
@@ -263,6 +277,12 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return false;
   }
 
+  /**
+   * Returns true if the operation occurred correctly
+   *
+   * @param orderNumber the order number
+   * @return true if the operation occurred correctly
+   */
   @Override
   public boolean editOrder(int orderNumber) {
     // construct the endpoint request
@@ -576,6 +596,16 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
       return false;
     }
 
+    // Check if Item is in box
+    if (!getItemIdsForFoodBox(Integer.parseInt(picked_Box.id)).contains(itemId)){
+      try {
+        throw new IncorrectFormatException("Item is not in box");
+      } catch (IncorrectFormatException e) {
+        e.printStackTrace();
+      }
+      return false;
+    }
+
     for (boxContents c : picked_Box.contents){
       if (c.id == itemId){
 
@@ -615,10 +645,13 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    * the client.
    *
    * @param orderNumber the order number
-   * @return status of the order for the requested number
+   * @return status of the order for the requested number or null if orderNumber is invalid
    */
   @Override
   public String getStatusForOrder(int orderNumber) {
+    // Make sure parameters are valid
+    assert(orderNumber>0);
+
     for (prevOrders o : orders){
       if (o.orderId == orderNumber){
         return o.status;
@@ -636,6 +669,9 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    */
   @Override
   public Collection<Integer> getItemIdsForOrder(int orderNumber) {
+    // Make sure parameters are valid
+    assert(orderNumber>0);
+
     List<Integer> itemIDs = new ArrayList<Integer>();
 
     for (prevOrders o : orders){
@@ -654,10 +690,14 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    *
    * @param  itemId the food box id as last returned from the server
    * @param  orderNumber the order number
-   * @return name of the item for the requested order
+   * @return name of the item for the requested order or null if orderNumber is invalid
+   *         or null if item is not in box
    */
   @Override
   public String getItemNameForOrder(int itemId, int orderNumber) {
+    // Make sure parameters are valid
+    assert(itemId>0 && orderNumber>0);
+
     for (prevOrders o : orders){
       if (o.orderId == orderNumber){
         for (boxContents c: o.foodBox.contents){
@@ -676,10 +716,14 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    *
    * @param  itemId the food box id as last returned from the server
    * @param  orderNumber the order number
-   * @return quantity of the item for the requested order
+   * @return quantity of the item for the requested order or 0 if orderNumber is invalid
+   *    *         or 0 if item is not in box
    */
   @Override
   public int getItemQuantityForOrder(int itemId, int orderNumber) {
+    // Make sure parameters are valid
+    assert(itemId>0 && orderNumber>0);
+
     for (prevOrders o : orders){
       if (o.orderId == orderNumber){
         for (boxContents c: o.foodBox.contents){
@@ -695,11 +739,6 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   /**
    * Returns true if quantity of the item for the requested order was changed.
    *
-   * This method changes the quantities for a placed order as stored locally
-   * by the client.
-   * In order to sync with the server, one needs to call the editOrder()
-   * method separately.
-   *
    * @param  itemId the food box id as last returned from the server
    * @param  orderNumber the order number
    * @param  quantity the food box item quantity to be set
@@ -707,18 +746,55 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    */
   @Override
   public boolean setItemQuantityForOrder(int itemId, int orderNumber, int quantity) {
+    // Make sure parameters are valid
+    assert(itemId>0 && orderNumber>0 && quantity>0);
+
     for (prevOrders o : orders){
-      if (o.orderId == orderNumber && o.status.equals("placed")){
-        for (boxContents c : picked_Box.contents){
-          if (c.id == itemId){
-            System.out.println(c.quantity);
-            c.quantity = quantity;
-            System.out.println(c.quantity);
+      if (o.orderId == orderNumber){
+
+        // Check if order has already been packed
+        if (!o.status.equals("placed")){
+          try {
+            throw new IncorrectFormatException("Order has already been packed");
+          } catch (IncorrectFormatException e) {
+            e.printStackTrace();
+          }
+          return false;
+
+        } else {
+
+          // Check if item is in box
+          if (!getItemIdsForFoodBox(Integer.parseInt(o.foodBox.id)).contains(itemId)){
+            try {
+              throw new IncorrectFormatException("Item is not in box");
+            } catch (IncorrectFormatException e) {
+              e.printStackTrace();
+            }
+            return false;
+
+          } else {
+
+            for (boxContents c : o.foodBox.contents){
+              if (c.id == itemId){
+
+                // Check if quantity is being decreased
+                if (quantity >= c.quantity){
+                  try {
+                    throw new IncorrectFormatException("Can only decrease quantity");
+                  } catch (IncorrectFormatException e) {
+                    e.printStackTrace();
+                  }
+                  return false;
+                }
+
+                c.quantity = quantity;
+              }
+            }
           }
         }
       }
     }
-    return false;
+    return true;
   }
 
   /**

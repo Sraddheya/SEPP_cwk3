@@ -54,9 +54,11 @@ public class ShieldingIndividualClientImpTest {
     // Registering new Catering company
     Random rand = new Random();
     cater_name = String.valueOf(rand.nextInt(10000));
-    String postCode_part1 = String.valueOf(rand.nextInt(10));
-    String postCode_part2 = String.valueOf(rand.nextInt(1000));
-    cater_postCode = "EH" + postCode_part1 + "_" + postCode_part2;
+    String temp1 = String.valueOf(rand.nextInt(10));
+    String temp2 = Character.toString( (char) (rand.nextInt(26) + 65));
+    String temp3 = Character.toString( (char) (rand.nextInt(26) + 65));
+
+    cater_postCode = "EH" + temp1 + "_" + temp1 + temp2 + temp3;
     String request = "/registerCateringCompany?business_name=" + cater_name + "&postcode=" + cater_postCode;
     try {
       ClientIO.doGETRequest(clientProps.getProperty("endpoint") + request);
@@ -100,6 +102,7 @@ public class ShieldingIndividualClientImpTest {
 
   @Test
   public void testPlaceOrder() {
+    // Create CHI
     Random rand = new Random();
     String temp = String.valueOf(rand.nextInt(10000));
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
@@ -107,48 +110,26 @@ public class ShieldingIndividualClientImpTest {
     String date = dtf.format(now);
     String CHI = date + temp;
 
-    System.out.println(CHI);
+    // Individual not registered yet should give exception
+    assertFalse(client.placeOrder());
 
-    client.registerShieldingIndividual(CHI);
+    assertTrue(client.registerShieldingIndividual(CHI));
     client.getClosestCateringCompany();
 
-    /**
     // Box not picked yet should give exception
     assertFalse(client.placeOrder());
 
-    client.pickFoodBox(1);
+    assertTrue(client.pickFoodBox(1));
     assertTrue(client.placeOrder());
 
     // Order already placed this week should give exception
-    client.pickFoodBox(1);
-    assertFalse(client.placeOrder());*/
-
-    /**
-    try {
-      String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/requestStatus?order_id=x");
-      // As the new Shielding Individual and catering company have the same address, this catering company should be the closest
-      clientProps.getProperty("order");
-    } catch (IOException e) {
-      e.printStackTrace();
-    }*/
-
+    assertTrue(client.pickFoodBox(1));
+    assertFalse(client.placeOrder());
   }
 
   @Test
   public void testRandom(){
-    /**
-    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
-    LocalDateTime now = LocalDateTime.now();
-    System.out.println(dtf.format(now));
-    now = now.minusWeeks(1);
-    System.out.println(dtf.format(now));
-
-    LocalDateTime temp = LocalDateTime.now();
-
-    System.out.println(dtf.format(temp));
-    assertTrue(temp.compareTo(now)>=0);*/
-
-    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
+    /**DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
     String nextWeek = dtf.format(now.plusWeeks(1));
     String today = dtf.format(now);
@@ -159,7 +140,7 @@ public class ShieldingIndividualClientImpTest {
     System.out.println(date_nextWeek + " " + date_today);
 
     assertTrue(date_nextWeek.compareTo(date_today)>=0);
-    assertTrue(date_today.compareTo(date_today)>=0);
+    assertTrue(date_today.compareTo(date_today)>=0);*/
   }
 
   /**
@@ -304,6 +285,9 @@ public class ShieldingIndividualClientImpTest {
     assertTrue(client.pickFoodBox(1));
     int quantity = client.getItemQuantityForFoodBox(1, 1);
 
+    // Item not in food box should hive exception
+    assertFalse(client.changeItemQuantityForPickedFoodBox(3, 0));
+
     // Quantity is being increased should give exception
     assertFalse(client.changeItemQuantityForPickedFoodBox(1, quantity+1));
 
@@ -311,29 +295,79 @@ public class ShieldingIndividualClientImpTest {
   }
 
   @Test
-  public void testGetOrderNumbers() {
-    // Registering new Shielding Individual to make orders
+  public void testOrders() {
+    // Create CHI
     Random rand = new Random();
     String temp = String.valueOf(rand.nextInt(10000));
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
     String date = dtf.format(now);
     String CHI = date + temp;
-    client.registerShieldingIndividual(CHI);
 
-    Collection<Integer> orderNumbers = new ArrayList<>();
+    assertTrue(client.registerShieldingIndividual(CHI));
 
-    // Placing order
-    String request3 = "/placeOrder?individual_id=" + CHI + "&catering_business_name=" + cater_name + "&catering_postcode=" + cater_postCode;
-    String data = "{\"contents\": [{\"id\":1,\"name\":\"cucumbers\",\"quantity\":20},{\"id\":2,\"name\":\"tomatoes\",\"quantity\":2}]}";
-    try {
-      String response = ClientIO.doPOSTRequest(clientProps.getProperty("endpoint") + request3, data);
-      orderNumbers.add(Integer.parseInt(response));
-    } catch (Exception e) {
-      e.printStackTrace();
+    // GET_ORDER_NUMBERS
+    // No orders have been placed yet so size should be 0
+    assertEquals(client.getOrderNumbers().size(),0);
+
+    // After order placed, size should be 1
+    client.getClosestCateringCompany();
+    assertTrue(client.pickFoodBox(1));
+    assertTrue(client.placeOrder());
+    assertEquals(client.getOrderNumbers().size(),1);
+
+    Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
+    Integer orderNumber = null;
+    for (Integer i : temp_orderNumbers){
+      orderNumber = i;
     }
 
-    assertEquals(client.getOrderNumbers(),orderNumbers);
+    // GET_STATUS_FOR_ORDER
+    // Null parameters should be asserted
+    //client.getStatusForOrder(0);
+
+    // Invalid/non existent orderNumber should return null
+    assertEquals(client.getStatusForOrder(1000000000), null);
+
+    assertEquals(client.getStatusForOrder(orderNumber), "placed");
+
+    // GET_ITEM_IDS_FOR_ORDER
+    // Null parameters should be asserted
+    //client.getItemIdsForOrder(0);
+
+    // We know the IDs because foodBox 1 was ordered
+    Collection<Integer> knownIds = new ArrayList<>();
+    knownIds.add(1);
+    knownIds.add(2);
+    knownIds.add(6);
+
+    assertEquals(client.getItemIdsForOrder(orderNumber), knownIds);
+
+    // GET_ITEM_NAME_FOR_ORDER
+    // Null parameters should be asserted
+    //client.getItemNameForOrder(0, 0);
+    //client.getItemNameForOrder(1, 0);
+    //client.getItemNameForOrder(0, 1);
+
+    // Invalid/non existent orderNumber should return null
+    assertEquals(client.getItemNameForOrder(1, 1000000000), null);
+    // ItemId not in box should return null
+    assertEquals(client.getItemNameForOrder(3, orderNumber), null);
+
+    assertEquals(client.getItemNameForOrder(1, orderNumber), "cucumbers");
+
+    // GET_ITEM_QUANTITY_FOR_ORDER
+    // Null parameters should be asserted
+    //client.getItemQuantityForOrder(0, 0);
+    //client.getItemQuantityForOrder(1, 0);
+    //client.getItemQuantityForOrder(0, 1);
+
+    // Invalid/non existent orderNumber should return 0
+    assertEquals(client.getItemQuantityForOrder(1, 1000000000), 0);
+    // ItemId not in box should return null
+    assertEquals(client.getItemQuantityForOrder(3, orderNumber), 0);
+
+    assertEquals(client.getItemQuantityForOrder(1, orderNumber), 1);
   }
 
   @Test
@@ -359,20 +393,9 @@ public class ShieldingIndividualClientImpTest {
     assertEquals(client.getClosestCateringCompany(), caterName);
   }
 
-  /**
   @Test
-  public void testGetCateringCompanies() throws IOException {
-    String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/getCaterers");
-    String temp = "";
+  public  void testSetItemQuantityForOrder(){
 
-    for (String s: client.getCateringCompanies()){
-      temp += ",\"" + s + "\"";
-    }
-
-    temp = temp.substring(1);
-    temp = "[" + temp + "]";
-
-    assertEquals(temp, response);
   }
-  */
+
 }
