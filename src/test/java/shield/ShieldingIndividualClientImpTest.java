@@ -4,17 +4,17 @@
 
 package shield;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Properties;
+import java.util.*;
 import java.time.LocalDateTime;
 import java.io.InputStream;
-
-import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,6 +28,8 @@ public class ShieldingIndividualClientImpTest {
 
   private Properties clientProps;
   private ShieldingIndividualClient client;
+  private String cater_name;
+  private String cater_postCode;
 
   private Properties loadProperties(String propsFilename) {
     ClassLoader loader = Thread.currentThread().getContextClassLoader();
@@ -48,6 +50,19 @@ public class ShieldingIndividualClientImpTest {
     clientProps = loadProperties(clientPropsFilename);
 
     client = new ShieldingIndividualClientImp(clientProps.getProperty("endpoint"));
+
+    // Registering new Catering company
+    Random rand = new Random();
+    cater_name = String.valueOf(rand.nextInt(10000));
+    String postCode_part1 = String.valueOf(rand.nextInt(10));
+    String postCode_part2 = String.valueOf(rand.nextInt(1000));
+    cater_postCode = "EH" + postCode_part1 + "_" + postCode_part2;
+    String request = "/registerCateringCompany?business_name=" + cater_name + "&postcode=" + cater_postCode;
+    try {
+      ClientIO.doGETRequest(clientProps.getProperty("endpoint") + request);
+    } catch (IOException ex) {
+      ex.printStackTrace();
+    }
   }
 
   /**
@@ -55,6 +70,7 @@ public class ShieldingIndividualClientImpTest {
    */
   @Test
   public void testShieldingIndividualNewRegistration() {
+    // Create CHI
     Random rand = new Random();
     String temp = String.valueOf(rand.nextInt(10000));
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
@@ -85,12 +101,65 @@ public class ShieldingIndividualClientImpTest {
   @Test
   public void testPlaceOrder() {
     Random rand = new Random();
-    String chi = String.valueOf(rand.nextInt(10000));
+    String temp = String.valueOf(rand.nextInt(10000));
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
+    LocalDateTime now = LocalDateTime.now();
+    String date = dtf.format(now);
+    String CHI = date + temp;
 
-    client.registerShieldingIndividual(chi);
+    System.out.println(CHI);
+
+    client.registerShieldingIndividual(CHI);
     client.getClosestCateringCompany();
+
+    /**
+    // Box not picked yet should give exception
+    assertFalse(client.placeOrder());
+
     client.pickFoodBox(1);
     assertTrue(client.placeOrder());
+
+    // Order already placed this week should give exception
+    client.pickFoodBox(1);
+    assertFalse(client.placeOrder());*/
+
+    /**
+    try {
+      String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/requestStatus?order_id=x");
+      // As the new Shielding Individual and catering company have the same address, this catering company should be the closest
+      clientProps.getProperty("order");
+    } catch (IOException e) {
+      e.printStackTrace();
+    }*/
+
+  }
+
+  @Test
+  public void testRandom(){
+    /**
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
+    LocalDateTime now = LocalDateTime.now();
+    System.out.println(dtf.format(now));
+    now = now.minusWeeks(1);
+    System.out.println(dtf.format(now));
+
+    LocalDateTime temp = LocalDateTime.now();
+
+    System.out.println(dtf.format(temp));
+    assertTrue(temp.compareTo(now)>=0);*/
+
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
+    LocalDateTime now = LocalDateTime.now();
+    String nextWeek = dtf.format(now.plusWeeks(1));
+    String today = dtf.format(now);
+    System.out.println(nextWeek + " " + today);
+
+    LocalDateTime date_nextWeek = LocalDate.parse(nextWeek, dtf).atStartOfDay();
+    LocalDateTime date_today = LocalDate.parse(today, dtf).atStartOfDay();
+    System.out.println(date_nextWeek + " " + date_today);
+
+    assertTrue(date_nextWeek.compareTo(date_today)>=0);
+    assertTrue(date_today.compareTo(date_today)>=0);
   }
 
   /**
@@ -116,6 +185,7 @@ public class ShieldingIndividualClientImpTest {
 
   @Test
   public void testGetDistance() {
+    // Create postcodes
     Random rand = new Random();
     String postCode_part11 = String.valueOf(rand.nextInt(10));
     String postCode_part12 = String.valueOf(rand.nextInt(1000));
@@ -151,18 +221,19 @@ public class ShieldingIndividualClientImpTest {
   @Test
   public void testGetDietaryPreferenceForFoodBox(){
     // Null parameters should be asserted
-    //client.getDietaryPreferenceForFoodBox(-1);
+    //client.getDietaryPreferenceForFoodBox(0);
+    //client.getDietaryPreferenceForFoodBox(6);
 
     assertEquals(client.getDietaryPreferenceForFoodBox(1), "none");
     assertEquals(client.getDietaryPreferenceForFoodBox(2), "pollotarian");
-    assertEquals(client.getDietaryPreferenceForFoodBox(5), "vegan");
     assertEquals(client.getDietaryPreferenceForFoodBox(5), "vegan");
   }
 
   @Test
   public void testGetItemsNumberForFoodBox(){
     // Null parameters should be asserted
-    //client.getItemsNumberForFoodBox(-1);
+    //client.getItemsNumberForFoodBox(0);
+    //client.getItemsNumberForFoodBox(6);
 
     assertEquals(client.getItemsNumberForFoodBox(1), 3);
     assertEquals(client.getItemsNumberForFoodBox(2), 3);
@@ -177,7 +248,8 @@ public class ShieldingIndividualClientImpTest {
     knownIds.add(7);
 
     // Null parameters should be asserted
-    //client.getItemIdsForFoodBox(-1);
+    //client.getItemIdsForFoodBox(0);
+    //client.getItemIdsForFoodBox(6);
 
     assertEquals(client.getItemIdsForFoodBox(2), knownIds);
   }
@@ -185,9 +257,10 @@ public class ShieldingIndividualClientImpTest {
   @Test
   public void testGetItemNameForFoodBox(){
     // Null parameters should be asserted
-    //client.getItemNameForFoodBox(-1, -1);
-    //client.getItemNameForFoodBox(1, -1);
-    //client.getItemNameForFoodBox(-1, 1);
+    //client.getItemNameForFoodBox(0, 0);
+    //client.getItemNameForFoodBox(1, 0);
+    //client.getItemNameForFoodBox(1, 6);
+    //client.getItemNameForFoodBox(0, 1);
 
     assertEquals(client.getItemNameForFoodBox(1,1), "cucumbers");
     assertEquals(client.getItemNameForFoodBox(3,2), "onions");
@@ -198,9 +271,10 @@ public class ShieldingIndividualClientImpTest {
   @Test
   public void testGetItemQuantityForFoodBox(){
     // Null parameters should be asserted
-    //client.getItemQuantityForFoodBox(-1, -1);
-    //client.getItemQuantityForFoodBox(1, -1);
-    //client.getItemQuantityForFoodBox(-1, 1);
+    //client.getItemQuantityForFoodBox(0, 0);
+    //client.getItemQuantityForFoodBox(1, 0);
+    //client.getItemQuantityForFoodBox(1, 6);
+    //client.getItemQuantityForFoodBox(0, 1);
 
     assertEquals(client.getItemQuantityForFoodBox(1,1), 1);
     assertEquals(client.getItemQuantityForFoodBox(1,2), 2);
@@ -211,7 +285,8 @@ public class ShieldingIndividualClientImpTest {
   @Test
   public void testPickFoodBox(){
     // Null parameters should be asserted
-    //client.pickFoodBox(-1);
+    //client.pickFoodBox(0);
+    //client.pickFoodBox(6);
 
     assertTrue(client.pickFoodBox(1));
   }
@@ -219,9 +294,9 @@ public class ShieldingIndividualClientImpTest {
   @Test
   public void testChangeItemQuantityForPickedFoodBox(){
     // Null parameters should be asserted
-    //client.changeItemQuantityForPickedFoodBox(-1, -1);
+    //client.changeItemQuantityForPickedFoodBox(0, -1);
     //client.changeItemQuantityForPickedFoodBox(1, -1);
-    //client.changeItemQuantityForPickedFoodBox(-1, 1);
+    //client.changeItemQuantityForPickedFoodBox(0, 1);
 
     // Box not picked yet should give exception
     assertFalse(client.changeItemQuantityForPickedFoodBox(1, 1));
@@ -236,33 +311,52 @@ public class ShieldingIndividualClientImpTest {
   }
 
   @Test
-  public void testOrders() {
+  public void testGetOrderNumbers() {
+    // Registering new Shielding Individual to make orders
     Random rand = new Random();
-    String chi = String.valueOf(rand.nextInt(10000));
+    String temp = String.valueOf(rand.nextInt(10000));
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
+    LocalDateTime now = LocalDateTime.now();
+    String date = dtf.format(now);
+    String CHI = date + temp;
+    client.registerShieldingIndividual(CHI);
 
-    client.registerShieldingIndividual(chi);
-    client.getClosestCateringCompany();
-    client.pickFoodBox(1);
-    assertTrue(client.placeOrder());
-    assertEquals(client.getOrderNumbers().size(),1);
+    Collection<Integer> orderNumbers = new ArrayList<>();
+
+    // Placing order
+    String request3 = "/placeOrder?individual_id=" + CHI + "&catering_business_name=" + cater_name + "&catering_postcode=" + cater_postCode;
+    String data = "{\"contents\": [{\"id\":1,\"name\":\"cucumbers\",\"quantity\":20},{\"id\":2,\"name\":\"tomatoes\",\"quantity\":2}]}";
+    try {
+      String response = ClientIO.doPOSTRequest(clientProps.getProperty("endpoint") + request3, data);
+      orderNumbers.add(Integer.parseInt(response));
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    assertEquals(client.getOrderNumbers(),orderNumbers);
   }
 
   @Test
   public void testGetClosestCateringCompany(){
+    // Register new shielding individual
     Random rand = new Random();
-    String chi = String.valueOf(rand.nextInt(10000));
+    String temp = String.valueOf(rand.nextInt(10000));
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
+    LocalDateTime now = LocalDateTime.now();
+    String date = dtf.format(now);
+    String CHI = date + temp;
+    client.registerShieldingIndividual(CHI);
+
+    // Register new catering company
     String caterName = String.valueOf(rand.nextInt(10000));
-
-    client.registerShieldingIndividual(chi);
-    System.out.println(client.getPostcode());
-
     try {
       String response_cater = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/registerCateringCompany?business_name=" + caterName + "&postcode=" + client.getPostcode());
-      // As the new Shielding Individual and catering company have the same address, this catering company should be the closest
-      assertEquals(client.getClosestCateringCompany(), caterName);
     } catch (IOException e) {
       e.printStackTrace();
     }
+
+    // As the new Shielding Individual and catering company have the same address, this catering company should be the closest
+    assertEquals(client.getClosestCateringCompany(), caterName);
   }
 
   /**
@@ -279,34 +373,6 @@ public class ShieldingIndividualClientImpTest {
     temp = "[" + temp + "]";
 
     assertEquals(temp, response);
-  }
-
-  @Test
-  public void testGetDistance() throws IOException {
-    Random rand = new Random();
-    String postCode1 = "EH1_" + String.valueOf(rand.nextInt(1000));
-    String postCode2 = "EH1_" + String.valueOf(rand.nextInt(1000));
-
-    String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/distance?postcode1=" + postCode1 + "&postcode2=" + postCode2);
-    assertEquals(client.getDistance(postCode1, postCode2), Float.parseFloat(response));
-  }
-
-
-  @Test
-  public void testGetClosestCateringCompany(){
-    Random rand = new Random();
-    String chi = String.valueOf(rand.nextInt(10000));
-    String name = String.valueOf(rand.nextInt(10000));
-
-    client.registerShieldingIndividual(chi);
-
-    try {
-      String response_cater = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/registerCateringCompany?business_name=" + name + "&postcode=" + client.getPostcode().replace("_", ""));
-      // As the new Shielding Individual and catering company have the same address, this catering company should be the closest
-      assertEquals(client.getClosestCateringCompany(), name);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
   }
   */
 }
