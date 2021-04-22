@@ -154,15 +154,38 @@ public class ShieldingIndividualClientImpTest {
     //client.editOrder(0);
 
     // Order should be successfully edited
-    int original_quantity = client.getItemQuantityForOrder(1, orderNumber);
-    assertTrue(client.setItemQuantityForOrder(1, orderNumber, original_quantity-1));
+    int original_quantity1 = client.getItemQuantityForOrder(1, orderNumber);
+    assertTrue(client.setItemQuantityForOrder(1, orderNumber, original_quantity1-1));
     assertTrue(client.editOrder(orderNumber));
-    int new_quantity = client.getItemQuantityForOrder(1, orderNumber);
-    assertTrue(new_quantity==(original_quantity-1));
+    int new_quantity1 = client.getItemQuantityForOrder(1, orderNumber);
+    assertTrue(new_quantity1==(original_quantity1-1));
 
-    /**
-     * UPDATE ORDER STATUS SHOULD GIVE EXCEPTION
-     */
+    // Order has already been packed should give assertion
+    try {
+      String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/updateOrderStatus?order_id=" + orderNumber + "&newStatus=packed");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    int original_quantity2 = client.getItemQuantityForOrder(2, orderNumber);
+    assertFalse(client.setItemQuantityForOrder(2, orderNumber, original_quantity2-1));
+    assertFalse(client.editOrder(orderNumber));
+    int new_quantity2 = client.getItemQuantityForOrder(2, orderNumber);
+    assertTrue(new_quantity2==original_quantity2);
+
+    // Order has already been cancelled should give assertion
+    try {
+      String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/updateOrderStatus?order_id=" + orderNumber + "&newStatus=cancelled");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    int original_quantity3 = client.getItemQuantityForOrder(2, orderNumber);
+    assertFalse(client.setItemQuantityForOrder(2, orderNumber, original_quantity3-1));
+    assertFalse(client.editOrder(orderNumber));
+    int new_quantity3 = client.getItemQuantityForOrder(2, orderNumber);
+    assertTrue(new_quantity3==original_quantity3);
+
+    // Order is not in individuals list so should give false
+    assertFalse(client.setItemQuantityForOrder(1, 1000000000, 0));
   }
 
   @Test
@@ -512,23 +535,27 @@ public class ShieldingIndividualClientImpTest {
     assertFalse(client.setItemQuantityForOrder(3, orderNumber, 0));
 
     // Item is not being decreased should give exception
-    int original_quantity = client.getItemQuantityForOrder(1, orderNumber);
-    assertFalse(client.setItemQuantityForOrder(1, orderNumber, original_quantity + 1));
+    int original_quantity1 = client.getItemQuantityForOrder(1, orderNumber);
+    assertFalse(client.setItemQuantityForOrder(1, orderNumber, original_quantity1 + 1));
 
     // Item quantity has been successfully changed
-    assertTrue(client.setItemQuantityForOrder(1, orderNumber, original_quantity-1));
-    int new_quantity = client.getItemQuantityForOrder(1, orderNumber);
-    assertTrue(new_quantity==(original_quantity-1));
+    assertTrue(client.setItemQuantityForOrder(1, orderNumber, original_quantity1-1));
+    int new_quantity1 = client.getItemQuantityForOrder(1, orderNumber);
+    assertTrue(new_quantity1==(original_quantity1-1));
 
-    /**
     // Order has already been packed should give assertion
     try {
-      // perform request
       String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/updateOrderStatus?order_id=" + orderNumber + "&newStatus=packed");
     } catch (Exception e) {
       e.printStackTrace();
     }
-    assertFalse(client.setItemQuantityForOrder(2, orderNumber, 0));*/
+    int original_quantity2 = client.getItemQuantityForOrder(2, orderNumber);
+    assertFalse(client.setItemQuantityForOrder(2, orderNumber, original_quantity2-1));
+    int new_quantity2 = client.getItemQuantityForOrder(2, orderNumber);
+    assertTrue(new_quantity2==original_quantity2);
+
+    // Order is not in individuals list so should give false
+    assertFalse(client.setItemQuantityForOrder(1, 1000000000, 0));
   }
 
 }

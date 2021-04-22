@@ -23,7 +23,6 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   private List<MessagingFoodBox> food_Boxes;
   private List<prevOrders> orders = new ArrayList<prevOrders>();
   private MessagingFoodBox picked_Box;
-  private prevOrders picked_order;
 
   // Internal field to store information about a food box
   final class MessagingFoodBox {
@@ -283,18 +282,21 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    *
    * @param orderNumber the order number
    * @return true if the operation occurred correctly
+   * @IncorrectFormatException if order has already been packed
    */
   @Override
   public boolean editOrder(int orderNumber) {
     // Make sure parameters are valid
     assert(orderNumber>0);
 
+    requestOrderStatus(orderNumber);
+
     for (prevOrders o : orders) {
       if (o.orderId == orderNumber) {
         // Check if order has already been packed
         if (!o.status.equals("placed")) {
           try {
-            throw new IncorrectFormatException("Order has already been packed");
+            throw new IncorrectFormatException("Order can no longer be amended");
           } catch (IncorrectFormatException e) {
             e.printStackTrace();
           }
@@ -795,13 +797,15 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     // Make sure parameters are valid
     assert(itemId>0 && orderNumber>0 && quantity>=0);
 
+    requestOrderStatus(orderNumber);
+
     for (prevOrders o : orders){
       if (o.orderId == orderNumber){
 
         // Check if order has already been packed
         if (!o.status.equals("placed")){
           try {
-            throw new IncorrectFormatException("Order has already been packed");
+            throw new IncorrectFormatException("Order can no longer be amended");
           } catch (IncorrectFormatException e) {
             e.printStackTrace();
           }
@@ -838,9 +842,10 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
             }
           }
         }
+        return true;
       }
     }
-    return true;
+    return false;
   }
 
   /**
