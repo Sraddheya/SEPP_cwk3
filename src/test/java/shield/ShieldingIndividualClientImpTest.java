@@ -128,6 +128,92 @@ public class ShieldingIndividualClientImpTest {
   }
 
   @Test
+  public void testEditOrder(){
+    // Create CHI
+    Random rand = new Random();
+    String temp = String.valueOf(rand.nextInt(10000));
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
+    LocalDateTime now = LocalDateTime.now();
+    String date = dtf.format(now);
+    String CHI = date + temp;
+
+    assertTrue(client.registerShieldingIndividual(CHI));
+
+    client.getClosestCateringCompany();
+    assertTrue(client.pickFoodBox(1));
+    assertTrue(client.placeOrder());
+    assertEquals(client.getOrderNumbers().size(),1);
+
+    Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
+    Integer orderNumber = null;
+    for (Integer i : temp_orderNumbers){
+      orderNumber = i;
+    }
+
+    // Null parameters should be asserted
+    //client.editOrder(0);
+
+    // Order should be successfully edited
+    int original_quantity = client.getItemQuantityForOrder(1, orderNumber);
+    assertTrue(client.setItemQuantityForOrder(1, orderNumber, original_quantity-1));
+    assertTrue(client.editOrder(orderNumber));
+    int new_quantity = client.getItemQuantityForOrder(1, orderNumber);
+    assertTrue(new_quantity==(original_quantity-1));
+
+    /**
+     * UPDATE ORDER STATUS SHOULD GIVE EXCEPTION
+     */
+  }
+
+  @Test
+  public void requestOrderStatus(){
+    // Create CHI
+    Random rand = new Random();
+    String temp = String.valueOf(rand.nextInt(10000));
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
+    LocalDateTime now = LocalDateTime.now();
+    String date = dtf.format(now);
+    String CHI = date + temp;
+
+    assertTrue(client.registerShieldingIndividual(CHI));
+
+    client.getClosestCateringCompany();
+    assertTrue(client.pickFoodBox(1));
+    assertTrue(client.placeOrder());
+    assertEquals(client.getOrderNumbers().size(),1);
+
+    Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
+    Integer orderNumber = null;
+    for (Integer i : temp_orderNumbers){
+      orderNumber = i;
+    }
+
+    // Null parameters should be asserted
+    //client.requestOrderStatus(0);
+
+    // Successful updates
+    try {
+      assertTrue(client.requestOrderStatus(orderNumber));
+      assertEquals(client.getStatusForOrder(orderNumber), "placed");
+      String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/updateOrderStatus?order_id=" + orderNumber + "&newStatus=packed");
+      assertTrue(client.requestOrderStatus(orderNumber));
+      assertEquals(client.getStatusForOrder(orderNumber), "packed");
+      response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/updateOrderStatus?order_id=" + orderNumber + "&newStatus=dispatched");
+      assertTrue(client.requestOrderStatus(orderNumber));
+      assertEquals(client.getStatusForOrder(orderNumber), "dispatched");
+      response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/updateOrderStatus?order_id=" + orderNumber + "&newStatus=delivered");
+      assertTrue(client.requestOrderStatus(orderNumber));
+      assertEquals(client.getStatusForOrder(orderNumber), "delivered");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    // Order number not found returns exception
+    assertFalse(client.requestOrderStatus(100000000));
+
+  }
+
+  @Test
   public void testRandom(){
     /**DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
@@ -395,7 +481,54 @@ public class ShieldingIndividualClientImpTest {
 
   @Test
   public  void testSetItemQuantityForOrder(){
+    // Create CHI
+    Random rand = new Random();
+    String temp = String.valueOf(rand.nextInt(10000));
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
+    LocalDateTime now = LocalDateTime.now();
+    String date = dtf.format(now);
+    String CHI = date + temp;
 
+    assertTrue(client.registerShieldingIndividual(CHI));
+
+    client.getClosestCateringCompany();
+    assertTrue(client.pickFoodBox(1));
+    assertTrue(client.placeOrder());
+    assertEquals(client.getOrderNumbers().size(),1);
+
+    Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
+    Integer orderNumber = null;
+    for (Integer i : temp_orderNumbers){
+      orderNumber = i;
+    }
+
+    // Null parameters should be asserted
+    //client.setItemQuantityForOrder(0, 0, -1);
+    //client.setItemQuantityForOrder(0, orderNumber, 0);
+    //client.setItemQuantityForOrder(1, 1000000000, 0);
+    //client.setItemQuantityForOrder(1, orderNumber, -1);
+
+    // Item is not in box should give exception
+    assertFalse(client.setItemQuantityForOrder(3, orderNumber, 0));
+
+    // Item is not being decreased should give exception
+    int original_quantity = client.getItemQuantityForOrder(1, orderNumber);
+    assertFalse(client.setItemQuantityForOrder(1, orderNumber, original_quantity + 1));
+
+    // Item quantity has been successfully changed
+    assertTrue(client.setItemQuantityForOrder(1, orderNumber, original_quantity-1));
+    int new_quantity = client.getItemQuantityForOrder(1, orderNumber);
+    assertTrue(new_quantity==(original_quantity-1));
+
+    /**
+    // Order has already been packed should give assertion
+    try {
+      // perform request
+      String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/updateOrderStatus?order_id=" + orderNumber + "&newStatus=packed");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    assertFalse(client.setItemQuantityForOrder(2, orderNumber, 0));*/
   }
 
 }

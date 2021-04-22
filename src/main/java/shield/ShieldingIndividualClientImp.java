@@ -23,6 +23,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   private List<MessagingFoodBox> food_Boxes;
   private List<prevOrders> orders = new ArrayList<prevOrders>();
   private MessagingFoodBox picked_Box;
+  private prevOrders picked_order;
 
   // Internal field to store information about a food box
   final class MessagingFoodBox {
@@ -285,31 +286,44 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    */
   @Override
   public boolean editOrder(int orderNumber) {
-    // construct the endpoint request
-    String request = "/editOrder?order_id=" + orderNumber;
+    // Make sure parameters are valid
+    assert(orderNumber>0);
 
-    // construct data to be passed to post request
-    String data = "{\"contents\": [";
-    for (prevOrders o : orders){
-      if (o.orderId == orderNumber){
-        for (boxContents c : picked_Box.contents){
-          data += "{\"id\":" + c.id + ",\"name\":\"" + c.name + "\",\"quantity\":" + c.quantity + "},";
+    for (prevOrders o : orders) {
+      if (o.orderId == orderNumber) {
+        // Check if order has already been packed
+        if (!o.status.equals("placed")) {
+          try {
+            throw new IncorrectFormatException("Order has already been packed");
+          } catch (IncorrectFormatException e) {
+            e.printStackTrace();
+          }
+          return false;
+
+        } else{
+
+          // Construct the endpoint request
+          String request = "/editOrder?order_id=" + orderNumber;
+
+          // Construct data to be passed to post request
+          String data = "{\"contents\": [";
+          for (boxContents c : o.foodBox.contents) {
+            data += "{\"id\":" + c.id + ",\"name\":\"" + c.name + "\",\"quantity\":" + c.quantity + "},";
+          }
+          data = data.substring(0, data.length()-1) + "]}";
+
+          try {
+            // perform request
+            String response = ClientIO.doPOSTRequest(endpoint + request, data);
+            if (response.equals("True")){
+              return true;
+            }
+          } catch (Exception e) {
+            e.printStackTrace();
+          }
         }
       }
     }
-    data = data.substring(0, data.length()-1) + "]}";
-
-    try {
-      // perform request
-      String response = ClientIO.doPOSTRequest(endpoint + request, data);
-
-      if (response.equals("True")){
-        return true;
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-
     return false;
   }
 
@@ -334,23 +348,52 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
   @Override
   public boolean requestOrderStatus(int orderNumber) {
-    // construct the endpoint request
+    // Make sure parameters are valid
+    assert(orderNumber>0);
+
+    // Construct the endpoint request
     String request = "/requestStatus?order_id=" + orderNumber;
 
     try {
-      // perform request
+      // Perform request
       String response = ClientIO.doGETRequest(endpoint + request);
 
       for (prevOrders o : orders){
         if (o.orderId == orderNumber){
-          //switch
+          switch(Integer.parseInt(response)) {
+            case 0:
+              o.status = "placed";
+              break;
+            case 1:
+              o.status = "packed";
+              break;
+            case 2:
+              o.status = "dispatched";
+              break;
+            case 3:
+              o.status = "delivered";
+              break;
+            case 4:
+              o.status = "cancelled";
+              break;
+            case -1:
+              o.status = "not found";
+              try {
+                throw new IncorrectFormatException("Order number was not found");
+              } catch (IncorrectFormatException e) {
+                e.printStackTrace();
+              } return false;
+          } return true;
         }
       }
-      return true;
     } catch (Exception e) {
       e.printStackTrace();
     }
-
+    try {
+      throw new IncorrectFormatException("Order number was not found");
+    } catch (IncorrectFormatException e) {
+      e.printStackTrace();
+    }
     return false;
   }
 
@@ -743,11 +786,14 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    * @param  orderNumber the order number
    * @param  quantity the food box item quantity to be set
    * @return true if quantity of the item for the requested order was changed
+   * @IncorrectFormatException if order has already been packed or
+   *                           if item is not in the box or
+   *                           if quantity was not decreased
    */
   @Override
   public boolean setItemQuantityForOrder(int itemId, int orderNumber, int quantity) {
     // Make sure parameters are valid
-    assert(itemId>0 && orderNumber>0 && quantity>0);
+    assert(itemId>0 && orderNumber>0 && quantity>=0);
 
     for (prevOrders o : orders){
       if (o.orderId == orderNumber){
