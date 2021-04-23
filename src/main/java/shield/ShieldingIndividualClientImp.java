@@ -48,22 +48,25 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     LocalDateTime datePlaced;
   }
 
-  /**
-   * Class to enable custom exception throws when the format given is incorrect,
-   * e.g, the format of a CHI number.
-   */
-  public class IncorrectFormatException extends Exception {
+  public class CustomException extends Exception {
 
-    public IncorrectFormatException(String message) {
+    /**
+     * Custom exception to help identify the exact cause through the error message.
+     *
+     * @param message the message thrown that informs the user of the exact issue
+     */
+    public CustomException(String message) {
       super(message);
     }
   }
 
   /**
-   * Sets endpoint for all the following HTTP requests and initialises food_Boxes so
+   * Sets endpoint for all the following Http requests and initialises food_Boxes so
    * it can be used in subsequent functions such as getDietaryPreferenceForFoodBox.
    *
    * @param endpoint
+   * @Exception if http request unsuccessful or
+   *            if unmarshal unsuccessful
    */
   public ShieldingIndividualClientImp(String endpoint) {
     // Make sure parameters are not null
@@ -71,14 +74,14 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
     this.endpoint = endpoint;
 
-    // construct the endpoint request
+    // Construct the endpoint request
     String request_foodBox = "/showFoodBox?orderOption=catering&dietaryPreference=";
 
     try {
-      // perform request
+      // Perform request
       String response = ClientIO.doGETRequest(endpoint + request_foodBox);
 
-      // unmarshal response
+      // Unmarshal response
       Type listType = new TypeToken<List<MessagingFoodBox>>() {} .getType();
       this.food_Boxes = new Gson().fromJson(response, listType);
     } catch (Exception e) {
@@ -111,8 +114,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     // CHI has ten digits
     if (CHI.length()!=10) {
       try {
-        throw new IncorrectFormatException("CHI must be ten numeric digits long and start with your date of birth");
-      } catch (IncorrectFormatException e) {
+        throw new CustomException("CHI must be ten numeric digits long and start with your date of birth");
+      } catch (CustomException e) {
         e.printStackTrace();
       }
       return false;
@@ -213,8 +216,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     // Check is individual is registered
     if (registered==false){
       try {
-        throw new IncorrectFormatException("You must first register as a Shielding Individual");
-      } catch (IncorrectFormatException e) {
+        throw new CustomException("You must first register as a Shielding Individual");
+      } catch (CustomException e) {
         e.printStackTrace();
       }
       return false;
@@ -223,8 +226,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     // Check if box has been picked
     if (picked_Box==null){
       try {
-        throw new IncorrectFormatException("You must first pick a box");
-      } catch (IncorrectFormatException e) {
+        throw new CustomException("You must first pick a box");
+      } catch (CustomException e) {
         e.printStackTrace();
       }
       return false;
@@ -239,8 +242,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     for (prevOrders o : orders){
       if (o.datePlaced.compareTo(lastWeek)>=0 && !o.status.equals("cancelled")){
         try {
-          throw new IncorrectFormatException("Order has already been placed this week");
-        } catch (IncorrectFormatException e) {
+          throw new CustomException("Order has already been placed this week");
+        } catch (CustomException e) {
           e.printStackTrace();
         }
         return false;
@@ -296,8 +299,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
         // Check if order has already been packed
         if (!o.status.equals("placed")) {
           try {
-            throw new IncorrectFormatException("Order can no longer be amended");
-          } catch (IncorrectFormatException e) {
+            throw new CustomException("Order can no longer be amended");
+          } catch (CustomException e) {
             e.printStackTrace();
           }
           return false;
@@ -348,8 +351,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
         // Check if order is not dispatched
         if (!o.status.equals("placed") || !o.status.equals("packed")) {
           try {
-            throw new IncorrectFormatException("Order can no longer be cancelled");
-          } catch (IncorrectFormatException e) {
+            throw new CustomException("Order can no longer be cancelled");
+          } catch (CustomException e) {
             e.printStackTrace();
           }
           return false;
@@ -408,8 +411,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
             case -1:
               o.status = "not found";
               try {
-                throw new IncorrectFormatException("Order number was not found");
-              } catch (IncorrectFormatException e) {
+                throw new CustomException("Order number was not found");
+              } catch (CustomException e) {
                 e.printStackTrace();
               } return false;
           } return true;
@@ -419,8 +422,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
       e.printStackTrace();
     }
     try {
-      throw new IncorrectFormatException("Order number was not found");
-    } catch (IncorrectFormatException e) {
+      throw new CustomException("Order number was not found");
+    } catch (CustomException e) {
       e.printStackTrace();
     }
     return false;
@@ -477,8 +480,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     // Make sure postCode format is correct
     if (!postCode1.startsWith("EH") || !postCode1.contains("_") || !postCode2.startsWith("EH") || !postCode2.contains("_")) {
       try {
-        throw new IncorrectFormatException("Postcodes must start with EH and be separated by an underscore");
-      } catch (IncorrectFormatException e) {
+        throw new CustomException("Postcodes must start with EH and be separated by an underscore");
+      } catch (CustomException e) {
         e.printStackTrace();
       }
       return 0;
@@ -661,8 +664,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     // Check if box has been picked
     if (picked_Box==null){
       try {
-        throw new IncorrectFormatException("You must first pick a box");
-      } catch (IncorrectFormatException e) {
+        throw new CustomException("You must first pick a box");
+      } catch (CustomException e) {
         e.printStackTrace();
       }
       return false;
@@ -671,8 +674,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     // Check if Item is in box
     if (!getItemIdsForFoodBox(Integer.parseInt(picked_Box.id)).contains(itemId)){
       try {
-        throw new IncorrectFormatException("Item is not in box");
-      } catch (IncorrectFormatException e) {
+        throw new CustomException("Item is not in box");
+      } catch (CustomException e) {
         e.printStackTrace();
       }
       return false;
@@ -684,8 +687,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
         // Check if quantity is being decreased
         if (quantity >= c.quantity){
           try {
-            throw new IncorrectFormatException("Can only decrease quantity");
-          } catch (IncorrectFormatException e) {
+            throw new CustomException("Can only decrease quantity");
+          } catch (CustomException e) {
             e.printStackTrace();
           }
           return false;
@@ -832,8 +835,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
         // Check if order has already been packed
         if (!o.status.equals("placed")){
           try {
-            throw new IncorrectFormatException("Order can no longer be amended");
-          } catch (IncorrectFormatException e) {
+            throw new CustomException("Order can no longer be amended");
+          } catch (CustomException e) {
             e.printStackTrace();
           }
           return false;
@@ -843,8 +846,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
           // Check if item is in box
           if (!getItemIdsForFoodBox(Integer.parseInt(o.foodBox.id)).contains(itemId)){
             try {
-              throw new IncorrectFormatException("Item is not in box");
-            } catch (IncorrectFormatException e) {
+              throw new CustomException("Item is not in box");
+            } catch (CustomException e) {
               e.printStackTrace();
             }
             return false;
@@ -857,8 +860,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
                 // Check if quantity is being decreased
                 if (quantity >= c.quantity){
                   try {
-                    throw new IncorrectFormatException("Can only decrease quantity");
-                  } catch (IncorrectFormatException e) {
+                    throw new CustomException("Can only decrease quantity");
+                  } catch (CustomException e) {
                     e.printStackTrace();
                   }
                   return false;
