@@ -99,7 +99,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    *
    * @param CHI CHI number of the shielding individual
    * @return true if the operation occurred correctly
-   * @IncorrectFormatException if the CHI number if not 10 digits long
+   * @CustomException if the CHI number if not 10 digits long
    * @Exception if CHI does not consist of all numeric digits or
    *            if CHI does not start with valid birth date or
    *            if http request unsuccessful or
@@ -205,11 +205,10 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    * Returns true if the operation occurred correctly
    *
    * @return true if the operation occurred correctly
-   * @IncorrectFormatException individual is not registered or
-   *                           no box has been picked or
-   *                           order has already been placed that week
-   * @Exception if http request unsuccessful or
-   *            if unmarshal unsuccessful
+   * @CustomException if individual is not registered or
+   *                  no box has been picked or
+   *                  order has already been placed that week
+   * @Exception if http request unsuccessful
    */
   @Override
   public boolean placeOrder() {
@@ -337,7 +336,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    *
    * @param orderNumber the order number
    * @return true if the operation occurred correctly
-   * @IncorrectFormatException if order has already been dispatched
+   * @CustomException if order has already been dispatched/can no longer be cancelled
    */
   @Override
   public boolean cancelOrder(int orderNumber) {
@@ -349,21 +348,13 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     for (prevOrders o : orders) {
       if (o.orderId == orderNumber) {
         // Check if order is not dispatched
-        if (!o.status.equals("placed") || !o.status.equals("packed")) {
-          try {
-            throw new CustomException("Order can no longer be cancelled");
-          } catch (CustomException e) {
-            e.printStackTrace();
-          }
-          return false;
-
-        } else{
+        if (o.status.equals("placed") || o.status.equals("packed")) {
 
           // Construct the endpoint request
           String request = "/cancelOrder?order_id=" + orderNumber;
 
           try {
-            // pPerform request
+            // Perform request
             String response = ClientIO.doGETRequest(endpoint + request);
 
             if (response.equals("True")){
@@ -372,12 +363,29 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
           } catch (Exception e) {
             e.printStackTrace();
           }
+
+        } else{
+
+          try {
+            throw new CustomException("Order can no longer be cancelled");
+          } catch (CustomException e) {
+            e.printStackTrace();
+          }
+          return false;
         }
       }
     }
     return false;
   }
 
+  /**
+   * Returns true if the operation occurred correctly.
+   *
+   * @param orderNumber the order number
+   * @return true if the operation occurred correctly
+   * @CustomException if order number not found
+   * @Exception if http request unsuccessful
+   */
   @Override
   public boolean requestOrderStatus(int orderNumber) {
     // Make sure parameters are valid
@@ -414,13 +422,16 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
                 throw new CustomException("Order number was not found");
               } catch (CustomException e) {
                 e.printStackTrace();
-              } return false;
-          } return true;
+              }
+              return false;
+          }
+          return true;
         }
       }
     } catch (Exception e) {
       e.printStackTrace();
     }
+
     try {
       throw new CustomException("Order number was not found");
     } catch (CustomException e) {
@@ -463,14 +474,14 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
 
   /**
    * Returns the distance between two locations based on their post codes where postcodes
-   * must start with EH and be separated by an underscore, e.g, EH11_2DR.
+   * must start with EH and be separated by an underscore, e.g, EH11_2DR. If the postcodes
+   * are incorrectly formatted, returns 0.
    *
    * @param postCode1 post code of one location
    * @param postCode2 post code of another location
-   * @return the distance as a float between the two locations or 0 if postcode format is incorrect
-   * @IncorrectFormatException if the postcode format is incorrect
-   * @Exception if http request unsuccessful or
-   *            if unmarshal unsuccessful
+   * @return the distance as a float between the two locations
+   * @CustomException if the postcode format is incorrect
+   * @Exception if http request unsuccessful
    */
   @Override
   public float getDistance(String postCode1, String postCode2) {
@@ -511,6 +522,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   }
 
   // Helper function added in ShieldingIndividualClient
+  @Override
   public String getPostcode() {
     return postcode;
   }
@@ -651,10 +663,9 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    * @param  itemId the food box id as last returned from the server
    * @param  quantity the food box item quantity to be set
    * @return true if the item quantity for the picked foodbox was changed
-   * @IncorrectFormatException if no box has been picked yet or
-   *                           if quantity was invalid
-   * @Exception if http request unsuccessful or
-   *            if unmarshal unsuccessful
+   * @CustomException if no box has been picked yet or
+   *                  if item was not in the box or
+   *                  if quantity was invalid
    */
   @Override
   public boolean changeItemQuantityForPickedFoodBox(int itemId, int quantity) {
@@ -879,7 +890,8 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   }
 
   /**
-   * Returns closest catering company serving orders based on our location
+   * Returns closest catering company serving orders based on Shielding Individuals
+   * postcode.
    *
    * @return business name of catering company
    */

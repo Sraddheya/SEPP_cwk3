@@ -25,6 +25,7 @@ public class ShieldingIndividualClientImpTest {
   private ShieldingIndividualClient client;
   private String cater_name;
   private String cater_postCode;
+  private Integer falseOrderNumber = 1000000000;
 
   private Properties loadProperties(String propsFilename) {
     ClassLoader loader = Thread.currentThread().getContextClassLoader();
@@ -97,9 +98,9 @@ public class ShieldingIndividualClientImpTest {
 
   @Test
   public void testPlaceOrder() {
-    // Create CHI
+    // Generate CHI
     Random rand = new Random();
-    String temp = String.valueOf(rand.nextInt(10000));
+    String temp = String.valueOf(rand.nextInt(10000 - 1000) + 1000);
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
     String date = dtf.format(now);
@@ -120,6 +121,18 @@ public class ShieldingIndividualClientImpTest {
     // Order already placed this week should give exception
     assertTrue(client.pickFoodBox(1));
     assertFalse(client.placeOrder());
+
+    // The latest order will be the currently placed order
+    Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
+    Integer orderNumber = null;
+    for (Integer i : temp_orderNumbers){
+      orderNumber = i;
+    }
+
+    // Now that order has been cancelled, new order can be placed
+    assertTrue(client.cancelOrder(orderNumber));
+    assertTrue(client.pickFoodBox(1));
+    assertTrue(client.placeOrder());
   }
 
   @Test
@@ -185,44 +198,36 @@ public class ShieldingIndividualClientImpTest {
 
   @Test
   public void testCancelOrder(){
-    // Create CHI
+    // Register shielding individual
     Random rand = new Random();
-    String temp = String.valueOf(rand.nextInt(10000));
+    String temp = String.valueOf(rand.nextInt(10000 - 1000) + 1000);
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
     String date = dtf.format(now);
     String CHI = date + temp;
-
     assertTrue(client.registerShieldingIndividual(CHI));
-
-    client.getClosestCateringCompany();
-    assertTrue(client.pickFoodBox(1));
-    assertTrue(client.placeOrder());
-    assertEquals(client.getOrderNumbers().size(),1);
-
-    Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
-    Integer orderNumber = null;
-    for (Integer i : temp_orderNumbers){
-      orderNumber = i;
-    }
 
     // Null parameters should be asserted
     //client.cancelOrder(0);
 
     // Order should be successfully cancelled when order is still placed
+    client.getClosestCateringCompany();
+    assertTrue(client.pickFoodBox(1));
+    assertTrue(client.placeOrder());
+    assertEquals(client.getOrderNumbers().size(),1);
+    // The latest order will be the currently placed order
+    Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
+    Integer orderNumber = null;
+    for (Integer i : temp_orderNumbers){
+      orderNumber = i;
+    }
     assertTrue(client.cancelOrder(orderNumber));
-
-    int original_quantity1 = client.getItemQuantityForOrder(1, orderNumber);
-    assertTrue(client.setItemQuantityForOrder(1, orderNumber, original_quantity1-1));
-    assertTrue(client.editOrder(orderNumber));
-    int new_quantity1 = client.getItemQuantityForOrder(1, orderNumber);
-    assertTrue(new_quantity1==(original_quantity1-1));
 
     // Order should be successfully cancelled when order is still packed
     assertTrue(client.pickFoodBox(1));
     assertTrue(client.placeOrder());
     assertEquals(client.getOrderNumbers().size(),1);
-
+    // The latest order will be the currently placed order
     temp_orderNumbers = client.getOrderNumbers();
     for (Integer i : temp_orderNumbers){
       orderNumber = i;
@@ -238,7 +243,7 @@ public class ShieldingIndividualClientImpTest {
     assertTrue(client.pickFoodBox(1));
     assertTrue(client.placeOrder());
     assertEquals(client.getOrderNumbers().size(),1);
-
+    // The latest order will be the currently placed order
     temp_orderNumbers = client.getOrderNumbers();
     for (Integer i : temp_orderNumbers){
       orderNumber = i;
@@ -251,26 +256,26 @@ public class ShieldingIndividualClientImpTest {
     assertFalse(client.cancelOrder(orderNumber));
 
     // Order is not in individuals list so should give false
-    assertFalse(client.cancelOrder( 1000000000));
+    assertFalse(client.cancelOrder( falseOrderNumber));
   }
 
   @Test
   public void requestOrderStatus(){
-    // Create CHI
+    // Register Shielding individual
     Random rand = new Random();
-    String temp = String.valueOf(rand.nextInt(10000));
+    String temp = String.valueOf(rand.nextInt(10000 - 1000) + 1000);
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
     String date = dtf.format(now);
     String CHI = date + temp;
-
     assertTrue(client.registerShieldingIndividual(CHI));
 
+    // Place order
     client.getClosestCateringCompany();
     assertTrue(client.pickFoodBox(1));
     assertTrue(client.placeOrder());
     assertEquals(client.getOrderNumbers().size(),1);
-
+    // The latest order will be the currently placed order
     Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
     Integer orderNumber = null;
     for (Integer i : temp_orderNumbers){
@@ -319,20 +324,18 @@ public class ShieldingIndividualClientImpTest {
   }
 
   @Test
-  public void testGetCateringCompanies() {
-    System.out.println(client.getCateringCompanies());
-  }
-
-  @Test
   public void testGetDistance() {
-    // Create postcodes
+    // Generate postcodes
     Random rand = new Random();
-    String postCode_part11 = String.valueOf(rand.nextInt(10));
-    String postCode_part12 = String.valueOf(rand.nextInt(1000));
-    String postCode1 = "EH" + postCode_part11 + "_" + postCode_part12;
-    String postCode_part21 = String.valueOf(rand.nextInt(10));
-    String postCode_part22 = String.valueOf(rand.nextInt(1000));
-    String postCode2 = "EH" + postCode_part21 + "_" + postCode_part22;
+    String temp11 = String.valueOf(rand.nextInt(10));
+    String temp12 = Character.toString( (char) (rand.nextInt(26) + 65));
+    String temp13 = Character.toString( (char) (rand.nextInt(26) + 65));
+    String postCode1 = "EH" + temp11 + "_" + temp11 + temp12 + temp13;
+    String temp21 = String.valueOf(rand.nextInt(10));
+    String temp22 = Character.toString( (char) (rand.nextInt(26) + 65));
+    String temp23 = Character.toString( (char) (rand.nextInt(26) + 65));
+    String postCode2 = "EH" + temp21 + "_" + temp21 + temp22 + temp23;
+
     String response;
 
     // Null parameters should be asserted
@@ -341,9 +344,9 @@ public class ShieldingIndividualClientImpTest {
     //client.getDistance(null, postCode2);
 
     // Incorrect postCode format should give exception
-    assertEquals(client.getDistance(postCode_part12, postCode_part22), 0);
-    assertEquals(client.getDistance(postCode_part11 + "_" + postCode_part12, postCode_part21 + "_" + postCode_part22), 0);
-    assertEquals(client.getDistance("EH" + postCode_part12, "EH" + postCode_part22), 0);
+    assertEquals(client.getDistance(temp11, temp21), 0);
+    assertEquals(client.getDistance(temp11 + "_" + temp12, temp21 + "_" + temp22), 0);
+    assertEquals(client.getDistance("EH" + temp11, "EH" + temp21), 0);
 
     try {
       response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/distance?postcode1=" + postCode1 + "&postcode2=" + postCode2);
@@ -441,15 +444,17 @@ public class ShieldingIndividualClientImpTest {
     // Box not picked yet should give exception
     assertFalse(client.changeItemQuantityForPickedFoodBox(1, 1));
 
+    // Pick food box
     assertTrue(client.pickFoodBox(1));
     int quantity = client.getItemQuantityForFoodBox(1, 1);
 
-    // Item not in food box should hive exception
+    // Item not in food box should give exception
     assertFalse(client.changeItemQuantityForPickedFoodBox(3, 0));
 
     // Quantity is being increased should give exception
     assertFalse(client.changeItemQuantityForPickedFoodBox(1, quantity+1));
 
+    // Successfully decrease quantity
     assertTrue(client.changeItemQuantityForPickedFoodBox(1, quantity-1));
   }
 
@@ -589,7 +594,7 @@ public class ShieldingIndividualClientImpTest {
   public void testGetClosestCateringCompany(){
     // Register new shielding individual
     Random rand = new Random();
-    String temp = String.valueOf(rand.nextInt(10000));
+    String temp = String.valueOf(rand.nextInt(10000 - 1000) + 1000);
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
     String date = dtf.format(now);

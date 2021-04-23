@@ -204,5 +204,10 @@ public interface ShieldingIndividualClient extends ShieldingIndividualClientEndp
   */
   public String getClosestCateringCompany();
 
+  /**
+   * Returns the postcode number of the shiedling individual
+   *
+   * @return postcode number of the shiedling individual
+   */
   public String getPostcode();
 }
