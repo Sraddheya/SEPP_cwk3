@@ -226,7 +226,7 @@ public class ShieldingIndividualClientImpTest {
     // Order should be successfully cancelled when order is still packed
     assertTrue(client.pickFoodBox(1));
     assertTrue(client.placeOrder());
-    assertEquals(client.getOrderNumbers().size(),1);
+    assertEquals(client.getOrderNumbers().size(),2);
     // The latest order will be the currently placed order
     temp_orderNumbers = client.getOrderNumbers();
     for (Integer i : temp_orderNumbers){
@@ -242,7 +242,7 @@ public class ShieldingIndividualClientImpTest {
     // Order should be not be cancelled as already dispatched
     assertTrue(client.pickFoodBox(1));
     assertTrue(client.placeOrder());
-    assertEquals(client.getOrderNumbers().size(),1);
+    assertEquals(client.getOrderNumbers().size(),3);
     // The latest order will be the currently placed order
     temp_orderNumbers = client.getOrderNumbers();
     for (Integer i : temp_orderNumbers){

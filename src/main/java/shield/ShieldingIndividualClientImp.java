@@ -337,6 +337,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    * @param orderNumber the order number
    * @return true if the operation occurred correctly
    * @CustomException if order has already been dispatched/can no longer be cancelled
+   * @Exception if http request unsuccessful
    */
   @Override
   public boolean cancelOrder(int orderNumber) {
@@ -358,6 +359,7 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
             String response = ClientIO.doGETRequest(endpoint + request);
 
             if (response.equals("True")){
+              o.status = "cancelled";
               return true;
             }
           } catch (Exception e) {
