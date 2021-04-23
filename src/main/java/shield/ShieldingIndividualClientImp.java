@@ -280,11 +280,17 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
   }
 
   /**
-   * Returns true if the operation occurred correctly
+   * Returns true if the operation occurred correctly.
+   *
+   * We are making the assumption that when a user edits an order, they call
+   * setItemQuantityForOrder() and editOrder() straight after one another so there
+   * is no risk that a foodBox can have its contents changed but not be edited (the order
+   * placed and the local order is the same).
    *
    * @param orderNumber the order number
    * @return true if the operation occurred correctly
-   * @IncorrectFormatException if order has already been packed
+   * @CustomException if order has already been packed
+   * @Exception if http request unsuccessful
    */
   @Override
   public boolean editOrder(int orderNumber) {
@@ -831,9 +837,9 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
    * @param  orderNumber the order number
    * @param  quantity the food box item quantity to be set
    * @return true if quantity of the item for the requested order was changed
-   * @IncorrectFormatException if order has already been packed or
-   *                           if item is not in the box or
-   *                           if quantity was not decreased
+   * @CustomException if order has already been packed or
+   *                  if item is not in the box or
+   *                  if quantity was not decreased
    */
   @Override
   public boolean setItemQuantityForOrder(int itemId, int orderNumber, int quantity) {
@@ -881,11 +887,11 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
                 }
 
                 c.quantity = quantity;
+                return true;
               }
             }
           }
         }
-        return true;
       }
     }
     return false;

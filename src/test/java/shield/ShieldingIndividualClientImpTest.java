@@ -122,36 +122,25 @@ public class ShieldingIndividualClientImpTest {
     assertTrue(client.pickFoodBox(1));
     assertFalse(client.placeOrder());
 
-    // The latest order will be the currently placed order
-    Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
-    Integer orderNumber = null;
-    for (Integer i : temp_orderNumbers){
-      orderNumber = i;
-    }
-
-    // Now that order has been cancelled, new order can be placed
-    assertTrue(client.cancelOrder(orderNumber));
-    assertTrue(client.pickFoodBox(1));
-    assertTrue(client.placeOrder());
   }
 
   @Test
   public void testEditOrder(){
-    // Create CHI
+    // Register shielding individual
     Random rand = new Random();
-    String temp = String.valueOf(rand.nextInt(10000));
+    String temp = String.valueOf(rand.nextInt(10000 - 1000) + 1000);
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
     String date = dtf.format(now);
     String CHI = date + temp;
-
     assertTrue(client.registerShieldingIndividual(CHI));
 
+    // Place order
     client.getClosestCateringCompany();
     assertTrue(client.pickFoodBox(1));
     assertTrue(client.placeOrder());
     assertEquals(client.getOrderNumbers().size(),1);
-
+    // The latest order will be the currently placed order
     Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
     Integer orderNumber = null;
     for (Integer i : temp_orderNumbers){
@@ -536,21 +525,21 @@ public class ShieldingIndividualClientImpTest {
 
   @Test
   public  void testSetItemQuantityForOrder(){
-    // Create CHI
+    // Register Shielding individual
     Random rand = new Random();
-    String temp = String.valueOf(rand.nextInt(10000));
+    String temp = String.valueOf(rand.nextInt(10000 - 1000) + 1000);
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
     String date = dtf.format(now);
     String CHI = date + temp;
-
     assertTrue(client.registerShieldingIndividual(CHI));
 
+    // Place order
     client.getClosestCateringCompany();
     assertTrue(client.pickFoodBox(1));
     assertTrue(client.placeOrder());
     assertEquals(client.getOrderNumbers().size(),1);
-
+    // The latest order will be the currently placed order
     Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
     Integer orderNumber = null;
     for (Integer i : temp_orderNumbers){
