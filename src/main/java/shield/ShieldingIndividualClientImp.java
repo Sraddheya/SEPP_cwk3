@@ -329,22 +329,49 @@ public class ShieldingIndividualClientImp implements ShieldingIndividualClient {
     return false;
   }
 
+  /**
+   * Returns true if the operation occurred correctly
+   *
+   * @param orderNumber the order number
+   * @return true if the operation occurred correctly
+   * @IncorrectFormatException if order has already been dispatched
+   */
   @Override
   public boolean cancelOrder(int orderNumber) {
-    // construct the endpoint request
-    String request = "/cancelOrder?order_id=" + orderNumber;
+    // Make sure parameters are valid
+    assert(orderNumber>0);
 
-    try {
-      // perform request
-      String response = ClientIO.doGETRequest(endpoint + request);
+    requestOrderStatus(orderNumber);
 
-      if (response.equals("True")){
-        return true;
+    for (prevOrders o : orders) {
+      if (o.orderId == orderNumber) {
+        // Check if order is not dispatched
+        if (!o.status.equals("placed") || !o.status.equals("packed")) {
+          try {
+            throw new IncorrectFormatException("Order can no longer be cancelled");
+          } catch (IncorrectFormatException e) {
+            e.printStackTrace();
+          }
+          return false;
+
+        } else{
+
+          // Construct the endpoint request
+          String request = "/cancelOrder?order_id=" + orderNumber;
+
+          try {
+            // pPerform request
+            String response = ClientIO.doGETRequest(endpoint + request);
+
+            if (response.equals("True")){
+              return true;
+            }
+          } catch (Exception e) {
+            e.printStackTrace();
+          }
+        }
       }
-    } catch (Exception e) {
-      e.printStackTrace();
     }
-
     return false;
   }
 

@@ -237,19 +237,74 @@ public class ShieldingIndividualClientImpTest {
   }
 
   @Test
-  public void testRandom(){
-    /**DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
+  public void testCancelOrder(){
+    // Create CHI
+    Random rand = new Random();
+    String temp = String.valueOf(rand.nextInt(10000));
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
-    String nextWeek = dtf.format(now.plusWeeks(1));
-    String today = dtf.format(now);
-    System.out.println(nextWeek + " " + today);
+    String date = dtf.format(now);
+    String CHI = date + temp;
 
-    LocalDateTime date_nextWeek = LocalDate.parse(nextWeek, dtf).atStartOfDay();
-    LocalDateTime date_today = LocalDate.parse(today, dtf).atStartOfDay();
-    System.out.println(date_nextWeek + " " + date_today);
+    assertTrue(client.registerShieldingIndividual(CHI));
 
-    assertTrue(date_nextWeek.compareTo(date_today)>=0);
-    assertTrue(date_today.compareTo(date_today)>=0);*/
+    client.getClosestCateringCompany();
+    assertTrue(client.pickFoodBox(1));
+    assertTrue(client.placeOrder());
+    assertEquals(client.getOrderNumbers().size(),1);
+
+    Collection<Integer> temp_orderNumbers = client.getOrderNumbers();
+    Integer orderNumber = null;
+    for (Integer i : temp_orderNumbers){
+      orderNumber = i;
+    }
+
+    // Null parameters should be asserted
+    //client.cancelOrder(0);
+
+    // Order should be successfully cancelled when order is still placed
+    assertTrue(client.cancelOrder(orderNumber));
+
+    int original_quantity1 = client.getItemQuantityForOrder(1, orderNumber);
+    assertTrue(client.setItemQuantityForOrder(1, orderNumber, original_quantity1-1));
+    assertTrue(client.editOrder(orderNumber));
+    int new_quantity1 = client.getItemQuantityForOrder(1, orderNumber);
+    assertTrue(new_quantity1==(original_quantity1-1));
+
+    // Order should be successfully cancelled when order is still packed
+    assertTrue(client.pickFoodBox(1));
+    assertTrue(client.placeOrder());
+    assertEquals(client.getOrderNumbers().size(),1);
+
+    temp_orderNumbers = client.getOrderNumbers();
+    for (Integer i : temp_orderNumbers){
+      orderNumber = i;
+    }
+    try {
+      String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/updateOrderStatus?order_id=" + orderNumber + "&newStatus=packed");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    assertTrue(client.cancelOrder(orderNumber));
+
+    // Order should be not be cancelled as already dispatched
+    assertTrue(client.pickFoodBox(1));
+    assertTrue(client.placeOrder());
+    assertEquals(client.getOrderNumbers().size(),1);
+
+    temp_orderNumbers = client.getOrderNumbers();
+    for (Integer i : temp_orderNumbers){
+      orderNumber = i;
+    }
+    try {
+      String response = ClientIO.doGETRequest(clientProps.getProperty("endpoint") + "/updateOrderStatus?order_id=" + orderNumber + "&newStatus=dispatched");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    assertFalse(client.cancelOrder(orderNumber));
+
+    // Order is not in individuals list so should give false
+    assertFalse(client.cancelOrder( 1000000000));
   }
 
   /**
