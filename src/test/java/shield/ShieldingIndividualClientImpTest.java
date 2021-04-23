@@ -1,12 +1,11 @@
-/**
- *
- */
 
 package shield;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+
 import org.junit.jupiter.api.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -15,13 +14,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.time.LocalDateTime;
 import java.io.InputStream;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-
-/**
- *
- */
 
 public class ShieldingIndividualClientImpTest {
   private final static String clientPropsFilename = "client.cfg";

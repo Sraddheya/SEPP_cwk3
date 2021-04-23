@@ -1,3 +1,7 @@
+/**
+ * We did not write separate unit and systems tests for CateringCompanyClientImpTest as we felt that
+ * each method encompassed a use case in and of itself.
+ */
 
 package shield;
 
@@ -40,10 +44,6 @@ public class CateringCompanyClientImpTest {
     client = new CateringCompanyClientImp(clientProps.getProperty("endpoint"));
   }
 
-  /**
-   * We did not write separate unit and systems tests for CateringCompanyClientImpTest as we felt that
-   * each method encompassed a use case in and of itself.
-   */
   @Test
   public void testCateringCompanyNewRegistration() {
     // Generate post code

@@ -1,3 +1,10 @@
+/**
+ * We did not write separate unit and systems tests for SupermarketClientImpTest as we felt that
+ * each method encompassed a use case in and of itself.
+ *
+ * Where possible we used Http requests but in some tests we used methods declared in SupermarketClientImp,
+ * however in those cases, we made sure that the method worked well by testing them first.
+ */
 
 package shield;
 
@@ -41,13 +48,6 @@ public class SupermarketClientImpTest {
     client = new SupermarketClientImp(clientProps.getProperty("endpoint"));
   }
 
-  /**
-   * We did not write separate unit and systems tests for SupermarketClientImpTest as we felt that
-   * each method encompassed a use case in and of itself.
-   *
-   * Where possible we used Http requests but in some tests we used methods declared in SupermakretClientImp,
-   * however in those cases, we made sure that the method worked well by testing them first.
-   */
   @Test
   public void testSupermarketNewRegistration() {
     Random rand = new Random();
