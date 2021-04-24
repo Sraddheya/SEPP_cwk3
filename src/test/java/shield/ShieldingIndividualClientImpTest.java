@@ -1,6 +1,7 @@
 /**
- * Where possible we used Http requests but in some tests we used methods declared in SupermarketClientImp,
- * however in those cases, we made sure that the method worked well by testing them first.
+ * Where possible we used Http requests but in some tests we used methods declared in
+ * ShieldingIndividualClientImp, however in those cases, we made sure that the method
+ * worked well by testing them first.
  */
 
 package shield;
@@ -182,7 +183,7 @@ public class ShieldingIndividualClientImpTest {
     assertTrue(new_quantity3==original_quantity3);
 
     // Order is not in individuals list so should give false
-    assertFalse(client.setItemQuantityForOrder(1, 1000000000, 0));
+    assertFalse(client.setItemQuantityForOrder(1, falseOrderNumber, 0));
   }
 
   @Test
@@ -447,16 +448,21 @@ public class ShieldingIndividualClientImpTest {
     assertTrue(client.changeItemQuantityForPickedFoodBox(1, quantity-1));
   }
 
+  /**
+   * This test method testOrders is a large test for all the methods that get information
+   * from placed orders. We put them all into this large test rather than smaller unit tests
+   * for each method to reduce code duplication (not needing to register a new shielding individual
+   * and place an order for each test).
+   */
   @Test
   public void testOrders() {
-    // Create CHI
+    // Register shielding individual
     Random rand = new Random();
     String temp = String.valueOf(rand.nextInt(10000));
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("ddMMyy");
     LocalDateTime now = LocalDateTime.now();
     String date = dtf.format(now);
     String CHI = date + temp;
-
     assertTrue(client.registerShieldingIndividual(CHI));
 
     // GET_ORDER_NUMBERS
@@ -480,7 +486,7 @@ public class ShieldingIndividualClientImpTest {
     //client.getStatusForOrder(0);
 
     // Invalid/non existent orderNumber should return null
-    assertEquals(client.getStatusForOrder(1000000000), null);
+    assertEquals(client.getStatusForOrder(falseOrderNumber), null);
 
     assertEquals(client.getStatusForOrder(orderNumber), "placed");
 
@@ -503,7 +509,7 @@ public class ShieldingIndividualClientImpTest {
     //client.getItemNameForOrder(0, 1);
 
     // Invalid/non existent orderNumber should return null
-    assertEquals(client.getItemNameForOrder(1, 1000000000), null);
+    assertEquals(client.getItemNameForOrder(1, falseOrderNumber), null);
     // ItemId not in box should return null
     assertEquals(client.getItemNameForOrder(3, orderNumber), null);
 
@@ -516,7 +522,7 @@ public class ShieldingIndividualClientImpTest {
     //client.getItemQuantityForOrder(0, 1);
 
     // Invalid/non existent orderNumber should return 0
-    assertEquals(client.getItemQuantityForOrder(1, 1000000000), 0);
+    assertEquals(client.getItemQuantityForOrder(1, falseOrderNumber), 0);
     // ItemId not in box should return null
     assertEquals(client.getItemQuantityForOrder(3, orderNumber), 0);
 
@@ -549,7 +555,7 @@ public class ShieldingIndividualClientImpTest {
     // Null parameters should be asserted
     //client.setItemQuantityForOrder(0, 0, -1);
     //client.setItemQuantityForOrder(0, orderNumber, 0);
-    //client.setItemQuantityForOrder(1, 1000000000, 0);
+    //client.setItemQuantityForOrder(1, falseOrderNumber, 0);
     //client.setItemQuantityForOrder(1, orderNumber, -1);
 
     // Item is not in box should give exception
@@ -576,7 +582,7 @@ public class ShieldingIndividualClientImpTest {
     assertTrue(new_quantity2==original_quantity2);
 
     // Order is not in individuals list so should give false
-    assertFalse(client.setItemQuantityForOrder(1, 1000000000, 0));
+    assertFalse(client.setItemQuantityForOrder(1, falseOrderNumber, 0));
   }
 
   @Test
