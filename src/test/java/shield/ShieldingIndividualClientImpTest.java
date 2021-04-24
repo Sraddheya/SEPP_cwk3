@@ -450,9 +450,9 @@ public class ShieldingIndividualClientImpTest {
 
   /**
    * This test method testOrders is a large test for all the methods that get information
-   * from placed orders. We put them all into this large test rather than smaller unit tests
-   * for each method to reduce code duplication (not needing to register a new shielding individual
-   * and place an order for each test).
+   * from placed orders. We put them all into this large unit-level-like test rather than smaller
+   * separate unit tests for each method to reduce code duplication (not needing to register a new
+   * shielding individual and place an order for each test).
    */
   @Test
   public void testOrders() {

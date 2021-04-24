@@ -1,6 +1,7 @@
 /**
- * We did not write separate unit and systems tests for CateringCompanyClientImpTest as we felt that
- * each method encompassed a use case in and of itself.
+ * For this class, since there are only getter methods and methods for a use case, we could not think of
+ * many unit tests that would check something different from the system test. This is why the tests in
+ * this class act as both unit and system tests.
  */
 
 package shield;
@@ -43,6 +44,10 @@ public class CateringCompanyClientImpTest {
 
     client = new CateringCompanyClientImp(clientProps.getProperty("endpoint"));
   }
+
+  /**
+   * Combination of system and unit tests
+   */
 
   @Test
   public void testCateringCompanyNewRegistration() {
